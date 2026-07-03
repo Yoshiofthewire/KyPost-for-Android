@@ -26,27 +26,26 @@ data class MailAccountConfig(
     val folderName: String,
 )
 
+data class EmailContent(
+    val html: String,
+    val toAddresses: List<String>,
+    val ccAddresses: List<String>,
+)
+
 class MailGateway(private val config: MailAccountConfig) {
+
+    var lastError: String? = null
+        private set
 
     fun isConfigured(): Boolean {
         return config.imapHost.isNotBlank() && config.smtpHost.isNotBlank() && config.username.isNotBlank()
     }
 
-    fun moveEmail(email: Email, targetFolder: String, sourceFolderName: String = config.folderName) {
+    fun moveEmail(messageId: String, targetFolder: String, sourceFolderName: String = config.folderName) {
         if (!isConfigured()) return
 
-        val props = Properties().apply {
-            put("mail.store.protocol", "imaps")
-            put("mail.imaps.host", config.imapHost)
-            put("mail.imaps.port", config.imapPort.toString())
-            put("mail.imaps.ssl.enable", "true")
-            put("mail.imaps.timeout", "10000")
-        }
-
         runCatching {
-            val session = Session.getInstance(props, authenticator())
-            val store = session.getStore("imaps")
-            store.connect(config.imapHost, config.imapPort, config.username, config.password)
+            val store = connectStore()
 
             val sourceFolder = store.getFolder(sourceFolderName)
             sourceFolder.open(Folder.READ_WRITE)
@@ -54,7 +53,7 @@ class MailGateway(private val config: MailAccountConfig) {
             targetFld.open(Folder.READ_WRITE)
 
             for (msg in sourceFolder.messages) {
-                if (msg.getHeader("Message-ID")?.firstOrNull() == email.id) {
+                if (msg.getHeader("Message-ID")?.firstOrNull() == messageId) {
                     sourceFolder.copyMessages(arrayOf(msg), targetFld)
                     msg.setFlag(Flags.Flag.DELETED, true)
                     sourceFolder.expunge()
@@ -70,27 +69,17 @@ class MailGateway(private val config: MailAccountConfig) {
         }
     }
 
-    fun deleteEmail(email: Email, sourceFolderName: String = config.folderName) {
+    fun deleteEmail(messageId: String, sourceFolderName: String = config.folderName) {
         if (!isConfigured()) return
 
-        val props = Properties().apply {
-            put("mail.store.protocol", "imaps")
-            put("mail.imaps.host", config.imapHost)
-            put("mail.imaps.port", config.imapPort.toString())
-            put("mail.imaps.ssl.enable", "true")
-            put("mail.imaps.timeout", "10000")
-        }
-
         runCatching {
-            val session = Session.getInstance(props, authenticator())
-            val store = session.getStore("imaps")
-            store.connect(config.imapHost, config.imapPort, config.username, config.password)
+            val store = connectStore()
 
             val folder = store.getFolder(sourceFolderName)
             folder.open(Folder.READ_WRITE)
 
             for (msg in folder.messages) {
-                if (msg.getHeader("Message-ID")?.firstOrNull() == email.id) {
+                if (msg.getHeader("Message-ID")?.firstOrNull() == messageId) {
                     msg.setFlag(Flags.Flag.DELETED, true)
                     break
                 }
@@ -104,43 +93,60 @@ class MailGateway(private val config: MailAccountConfig) {
         }
     }
 
+    fun markAsRead(messageId: String, sourceFolderName: String = config.folderName) {
+        if (!isConfigured()) return
+
+        runCatching {
+            val store = connectStore()
+
+            val folder = store.getFolder(sourceFolderName)
+            folder.open(Folder.READ_WRITE)
+
+            for (msg in folder.messages) {
+                if (msg.getHeader("Message-ID")?.firstOrNull() == messageId) {
+                    msg.setFlag(Flags.Flag.SEEN, true)
+                    break
+                }
+            }
+
+            folder.close(true)
+            store.close()
+        }.onFailure {
+            Log.w(TAG, "Failed to mark email as read", it)
+        }
+    }
+
     fun fetchInboxEmails(limit: Int = 100): List<Email> = fetchEmails(config.folderName, limit)
 
     fun fetchEmails(folderName: String, limit: Int = 100): List<Email> {
         if (!isConfigured()) {
+            lastError = "Mail account is not configured"
             return emptyList()
-        }
-
-        val props = Properties().apply {
-            put("mail.store.protocol", "imaps")
-            put("mail.imaps.host", config.imapHost)
-            put("mail.imaps.port", config.imapPort.toString())
-            put("mail.imaps.ssl.enable", "true")
-            put("mail.imaps.timeout", "10000")
-            put("mail.imaps.connectiontimeout", "10000")
         }
 
         var store: Store? = null
         var folder: Folder? = null
 
         return try {
-            val session = Session.getInstance(props, authenticator())
-            store = session.getStore("imaps")
-            store.connect(config.imapHost, config.imapPort, config.username, config.password)
+            store = connectStore()
             folder = store.getFolder(folderName)
             folder.open(Folder.READ_ONLY)
 
             val messages = folder.messages
             if (messages.isEmpty()) {
+                lastError = null
                 return emptyList()
             }
 
             val start = (messages.size - limit).coerceAtLeast(0)
-            messages.copyOfRange(start, messages.size)
+            val result = messages.copyOfRange(start, messages.size)
                 .toList()
                 .asReversed()
                 .map(::toEmail)
+            lastError = null
+            result
         } catch (ex: Exception) {
+            lastError = ex.message ?: ex.javaClass.simpleName
             Log.w(TAG, "Failed to fetch emails for folder=$folderName", ex)
             emptyList()
         } finally {
@@ -184,34 +190,27 @@ class MailGateway(private val config: MailAccountConfig) {
         }
     }
 
-    fun fetchEmailBodyHtml(messageId: String, folderName: String): String? {
+    fun fetchEmailContent(messageId: String, folderName: String): EmailContent? {
         if (!isConfigured() || messageId.isBlank()) {
             return null
-        }
-
-        val props = Properties().apply {
-            put("mail.store.protocol", "imaps")
-            put("mail.imaps.host", config.imapHost)
-            put("mail.imaps.port", config.imapPort.toString())
-            put("mail.imaps.ssl.enable", "true")
-            put("mail.imaps.timeout", "10000")
-            put("mail.imaps.connectiontimeout", "10000")
         }
 
         var store: Store? = null
         var folder: Folder? = null
 
         return try {
-            val session = Session.getInstance(props, authenticator())
-            store = session.getStore("imaps")
-            store.connect(config.imapHost, config.imapPort, config.username, config.password)
+            store = connectStore()
             folder = store.getFolder(folderName)
             folder.open(Folder.READ_ONLY)
 
             folder.messages.firstNotNullOfOrNull { msg ->
                 val id = msg.getHeader("Message-ID")?.firstOrNull()?.ifBlank { null } ?: "${msg.messageNumber}"
                 if (id == messageId) {
-                    extractHtmlBody(msg)
+                    EmailContent(
+                        html = extractHtmlBody(msg),
+                        toAddresses = msg.getRecipients(Message.RecipientType.TO)?.map { it.toString() }.orEmpty(),
+                        ccAddresses = msg.getRecipients(Message.RecipientType.CC)?.map { it.toString() }.orEmpty(),
+                    )
                 } else {
                     null
                 }
@@ -229,6 +228,21 @@ class MailGateway(private val config: MailAccountConfig) {
                 store?.close()
             }
         }
+    }
+
+    private fun connectStore(): Store {
+        val props = Properties().apply {
+            put("mail.store.protocol", "imaps")
+            put("mail.imaps.host", config.imapHost)
+            put("mail.imaps.port", config.imapPort.toString())
+            put("mail.imaps.ssl.enable", "true")
+            put("mail.imaps.timeout", "10000")
+            put("mail.imaps.connectiontimeout", "10000")
+        }
+        val session = Session.getInstance(props, authenticator())
+        val store = session.getStore("imaps")
+        store.connect(config.imapHost, config.imapPort, config.username, config.password)
+        return store
     }
 
     private fun authenticator(): Authenticator {

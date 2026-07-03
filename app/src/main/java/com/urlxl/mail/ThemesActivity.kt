@@ -1,5 +1,7 @@
 package com.urlxl.mail
 
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -7,8 +9,6 @@ import android.widget.ArrayAdapter
 import android.widget.ListView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 
 class ThemesActivity : AppCompatActivity() {
 
@@ -28,10 +28,21 @@ class ThemesActivity : AppCompatActivity() {
             THEME_OPTIONS,
         ) {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val row = super.getView(position, convertView, parent)
-                val palette = getStoredThemePalette(this@ThemesActivity)
-                row.setBackgroundColor(android.graphics.Color.parseColor(palette.panel))
-                (row as TextView).setTextColor(android.graphics.Color.parseColor(palette.inkStrong))
+                val row = super.getView(position, convertView, parent) as TextView
+                val activePalette = getStoredThemePalette(this@ThemesActivity)
+                row.setBackgroundColor(Color.parseColor(activePalette.panel))
+                row.setTextColor(Color.parseColor(activePalette.inkStrong))
+
+                val rowPalette = themePaletteFor(THEME_OPTIONS[position])
+                val swatchSize = (22 * resources.displayMetrics.density).toInt()
+                val swatch = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setSize(swatchSize, swatchSize)
+                    setColor(Color.parseColor(rowPalette.accent))
+                    setStroke((1 * resources.displayMetrics.density).toInt(), Color.parseColor(rowPalette.line))
+                }
+                row.compoundDrawablePadding = (16 * resources.displayMetrics.density).toInt()
+                row.setCompoundDrawablesWithIntrinsicBounds(swatch, null, null, null)
                 return row
             }
         }
@@ -47,15 +58,6 @@ class ThemesActivity : AppCompatActivity() {
             saveThemeName(this, chosen)
             applyThemeToActivity(this)
             (listView.adapter as ArrayAdapter<*>).notifyDataSetChanged()
-        }
-    }
-
-    private fun actionBarSize(): Int {
-        val typedArray = theme.obtainStyledAttributes(intArrayOf(android.R.attr.actionBarSize))
-        return try {
-            typedArray.getDimensionPixelSize(0, 0)
-        } finally {
-            typedArray.recycle()
         }
     }
 

@@ -2,7 +2,9 @@ package com.urlxl.mail
 
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,7 +14,9 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -184,17 +188,22 @@ class InboxActivity : AppCompatActivity() {
         ioExecutor.execute {
             try {
                 val emails = mailGateway.fetchEmails(currentFolder)
+                val error = mailGateway.lastError
                 keywordSettings.rememberKeywords(emails.flatMap { it.keywords }.toSet())
                 runOnUiThread {
                     loadingSpinner.visibility = android.view.View.GONE
                     allEmails = emails
                     rebuildTabs(emails)
                     renderFilteredEmails()
+                    if (error != null) {
+                        Toast.makeText(this, "Couldn't refresh inbox: $error", Toast.LENGTH_LONG).show()
+                    }
                 }
             } catch (ex: Exception) {
                 Log.e(TAG, "Failed to refresh inbox", ex)
                 runOnUiThread {
                     loadingSpinner.visibility = android.view.View.GONE
+                    Toast.makeText(this, "Couldn't refresh inbox: ${ex.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -287,6 +296,17 @@ class InboxActivity : AppCompatActivity() {
     }
 
     private fun setupSwipeGestures() {
+        val iconSize = (24 * resources.displayMetrics.density).toInt()
+        val iconMargin = (16 * resources.displayMetrics.density).toInt()
+        val archiveIcon = ContextCompat.getDrawable(this, R.drawable.ic_archive)?.mutate()?.apply {
+            setTint(Color.WHITE)
+        }
+        val deleteIcon = ContextCompat.getDrawable(this, R.drawable.ic_delete)?.mutate()?.apply {
+            setTint(Color.WHITE)
+        }
+        val archiveBackground = ColorDrawable(SWIPE_ARCHIVE_COLOR)
+        val deleteBackground = ColorDrawable(SWIPE_DELETE_COLOR)
+
         val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             0,
             ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
@@ -297,6 +317,48 @@ class InboxActivity : AppCompatActivity() {
                 target: RecyclerView.ViewHolder
             ): Boolean = false
 
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
+                    val itemView = viewHolder.itemView
+                    val iconTop = itemView.top + (itemView.height - iconSize) / 2
+                    val iconBottom = iconTop + iconSize
+
+                    when {
+                        dX > 0 -> {
+                            deleteBackground.setBounds(
+                                itemView.left, itemView.top, itemView.left + dX.toInt(), itemView.bottom
+                            )
+                            deleteBackground.draw(c)
+                            if (dX > iconSize + iconMargin * 2) {
+                                val iconLeft = itemView.left + iconMargin
+                                deleteIcon?.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconBottom)
+                                deleteIcon?.draw(c)
+                            }
+                        }
+                        dX < 0 -> {
+                            archiveBackground.setBounds(
+                                itemView.right + dX.toInt(), itemView.top, itemView.right, itemView.bottom
+                            )
+                            archiveBackground.draw(c)
+                            if (-dX > iconSize + iconMargin * 2) {
+                                val iconRight = itemView.right - iconMargin
+                                archiveIcon?.setBounds(iconRight - iconSize, iconTop, iconRight, iconBottom)
+                                archiveIcon?.draw(c)
+                            }
+                        }
+                    }
+                }
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
                 if (position < 0 || position >= adapter.itemCount) return
@@ -304,7 +366,7 @@ class InboxActivity : AppCompatActivity() {
                 when (direction) {
                     ItemTouchHelper.LEFT -> {
                         ioExecutor.execute {
-                            mailGateway.moveEmail(email, "[Gmail]/All Mail", currentFolder)
+                            mailGateway.moveEmail(email.id, "[Gmail]/All Mail", currentFolder)
                             runOnUiThread {
                                 allEmails = allEmails.filter { it.id != email.id }
                                 renderFilteredEmails()
@@ -313,7 +375,7 @@ class InboxActivity : AppCompatActivity() {
                     }
                     ItemTouchHelper.RIGHT -> {
                         ioExecutor.execute {
-                            mailGateway.deleteEmail(email, currentFolder)
+                            mailGateway.deleteEmail(email.id, currentFolder)
                             runOnUiThread {
                                 allEmails = allEmails.filter { it.id != email.id }
                                 renderFilteredEmails()
@@ -332,5 +394,7 @@ class InboxActivity : AppCompatActivity() {
         private const val MENU_KEYWORDS = 0
         private const val MENU_SETTINGS = 1
         private const val MENU_THEMES = 2
+        private val SWIPE_ARCHIVE_COLOR = Color.parseColor("#2E7D32")
+        private val SWIPE_DELETE_COLOR = Color.parseColor("#C62828")
     }
 }

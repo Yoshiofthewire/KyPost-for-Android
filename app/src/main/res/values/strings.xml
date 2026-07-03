@@ -45,6 +45,13 @@
     <string name="email_body_label">Message:</string>
     <string name="reply">Reply</string>
 
+    <string name="action_archive">Archive</string>
+    <string name="action_spam">Mark as spam</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_reply">Reply</string>
+    <string name="action_reply_all">Reply all</string>
+    <string name="action_forward">Forward</string>
+
     <string name="keyword_settings_title">Keyword Settings</string>
     <string name="keyword_settings_intro">Hide or show keyword headings in inbox tabs.</string>
     <string name="keyword_settings_empty">No IMAP keywords discovered yet. Open Inbox to sync first.</string>

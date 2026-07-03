@@ -45,10 +45,6 @@ class MailSettings(context: Context) {
     fun getUsername(): String = prefs.getString(KEY_USERNAME, "") ?: ""
     fun getPassword(): String = prefs.getString(KEY_PASSWORD, "") ?: ""
     fun getImapFolder(): String = prefs.getString(KEY_IMAP_FOLDER, "INBOX") ?: "INBOX"
-    fun getShowKeywords(): Boolean = prefs.getBoolean(KEY_SHOW_KEYWORDS, true)
-    fun setShowKeywords(show: Boolean) {
-        prefs.edit().putBoolean(KEY_SHOW_KEYWORDS, show).apply()
-    }
 
     companion object {
         private const val PREFS_NAME = "com.urlxl.mail.settings"
@@ -59,7 +55,6 @@ class MailSettings(context: Context) {
         private const val KEY_USERNAME = "username"
         private const val KEY_PASSWORD = "password"
         private const val KEY_IMAP_FOLDER = "imap_folder"
-        private const val KEY_SHOW_KEYWORDS = "show_keywords"
     }
 }
 

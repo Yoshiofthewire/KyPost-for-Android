@@ -2,6 +2,7 @@ package com.urlxl.mail
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
@@ -12,10 +13,12 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 const val THEME_STORAGE_KEY = "llama-lab-theme"
 
@@ -72,7 +75,11 @@ fun saveThemeName(context: Context, themeName: String) {
 }
 
 fun getStoredThemePalette(context: Context): ThemePalette {
-    return themePalettes[getStoredThemeName(context)] ?: themePalettes.getValue("Dark Matter")
+    return themePaletteFor(getStoredThemeName(context))
+}
+
+fun themePaletteFor(themeName: String): ThemePalette {
+    return themePalettes[themeName] ?: themePalettes.getValue("Dark Matter")
 }
 
 fun applyThemeToActivity(activity: Activity) {
@@ -86,10 +93,23 @@ fun applyThemeToActivity(activity: Activity) {
         activity.window.statusBarColor = accentColor
         activity.window.navigationBarColor = panelColor
     }
+    // Edge-to-edge (API 35+) ignores statusBarColor, leaving the raw window background (light by
+    // default) visible behind the status bar. Paint the window itself so it matches the toolbar.
+    activity.window.decorView.setBackgroundColor(accentColor)
+    WindowInsetsControllerCompat(activity.window, activity.window.decorView).isAppearanceLightStatusBars =
+        readableOn(accentColor) == Color.BLACK
 
     if (activity is AppCompatActivity) {
         activity.supportActionBar?.setBackgroundDrawable(ColorDrawable(accentColor))
         activity.supportActionBar?.title = styledTitle(activity.title?.toString().orEmpty(), readableOn(accentColor))
+    }
+
+    // The overflow ("more options") icon isn't part of the content view tree, so it never gets
+    // painted by applyThemeToViewTree below. It defaults to a fixed light tint from the base
+    // theme, which disappears against light accent colors (Sun, Sky, White Cliffs, ...). The menu
+    // only exists once onCreateOptionsMenu has run, so defer the lookup by a frame.
+    activity.window.decorView.post {
+        tintOverflowIcon(activity, readableOn(accentColor))
     }
 
     val root: View = activity.findViewById(android.R.id.content)
@@ -123,6 +143,27 @@ fun applyPrimaryButtonTheme(context: Context, button: Button) {
     button.setTextColor(readableOn(Color.parseColor(palette.accent)))
 }
 
+fun applyIconButtonTheme(context: Context, button: android.widget.ImageButton) {
+    val palette = getStoredThemePalette(context)
+    button.imageTintList = ColorStateList.valueOf(Color.parseColor(palette.inkStrong))
+}
+
+private fun tintOverflowIcon(activity: Activity, color: Int) {
+    val description = activity.getString(androidx.appcompat.R.string.abc_action_menu_overflow_description)
+    val overflowButton = findViewByContentDescription(activity.window.decorView, description) as? ImageView
+    overflowButton?.imageTintList = ColorStateList.valueOf(color)
+}
+
+private fun findViewByContentDescription(view: View, description: CharSequence): View? {
+    if (view.contentDescription == description) return view
+    if (view is ViewGroup) {
+        for (index in 0 until view.childCount) {
+            findViewByContentDescription(view.getChildAt(index), description)?.let { return it }
+        }
+    }
+    return null
+}
+
 private fun applyThemeToViewTree(view: View, palette: ThemePalette) {
     val panelColor = Color.parseColor(palette.panel)
     val inkStrong = Color.parseColor(palette.inkStrong)
@@ -141,19 +182,24 @@ private fun applyThemeToViewTree(view: View, palette: ThemePalette) {
         }
         is CheckBox -> {
             view.setTextColor(inkStrong)
+            view.buttonTintList = ColorStateList.valueOf(accent)
         }
         is TextView -> {
-            // Preserve intentionally small helper text contrast while ensuring readability.
+            // Hardcoded XML text colors in this app are always grayscale template leftovers
+            // (black/white/mid-gray placeholders), never intentional brand colors, so any
+            // grayscale color is safe to remap onto the active palette's ink tones.
             val current = view.currentTextColor
-            if (isNearWhite(current) || isNearBlack(current)) {
-                view.setTextColor(inkStrong)
+            if (isGrayscale(current)) {
+                view.setTextColor(if (isNearWhite(current) || isNearBlack(current)) inkStrong else ink)
             }
         }
     }
 
     if (view is ViewGroup) {
-        // Keep panel containers readable when backgrounds are unspecified.
-        if (view.background == null && view !is androidx.recyclerview.widget.RecyclerView) {
+        // Keep panel containers in sync with the active palette. Always repaint (not just when
+        // background == null) so switching themes without recreating the activity refreshes
+        // containers that were already painted on a previous pass, not just newly-touched ones.
+        if (view !is androidx.recyclerview.widget.RecyclerView) {
             view.setBackgroundColor(panelColor)
         }
         for (index in 0 until view.childCount) {
@@ -162,19 +208,21 @@ private fun applyThemeToViewTree(view: View, palette: ThemePalette) {
     }
 }
 
+private val density: Float get() = android.content.res.Resources.getSystem().displayMetrics.density
+
 private fun fieldBackground(palette: ThemePalette): GradientDrawable {
     return GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
-        cornerRadius = 8f
+        cornerRadius = 8f * density
         setColor(Color.parseColor(palette.panel))
-        setStroke(2, Color.parseColor(palette.line))
+        setStroke((2 * density).toInt(), Color.parseColor(palette.line))
     }
 }
 
 private fun buttonBackground(palette: ThemePalette): GradientDrawable {
     return GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
-        cornerRadius = 8f
+        cornerRadius = 8f * density
         setColor(Color.parseColor(palette.accent))
     }
 }
@@ -196,6 +244,13 @@ private fun isNearWhite(color: Int): Boolean {
 
 private fun isNearBlack(color: Int): Boolean {
     return Color.red(color) < 20 && Color.green(color) < 20 && Color.blue(color) < 20
+}
+
+private fun isGrayscale(color: Int): Boolean {
+    val r = Color.red(color)
+    val g = Color.green(color)
+    val b = Color.blue(color)
+    return (maxOf(r, g, b) - minOf(r, g, b)) <= 10
 }
 
 private fun actionBarSize(activity: Activity): Int {

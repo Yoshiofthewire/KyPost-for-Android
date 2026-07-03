@@ -5,8 +5,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import java.util.concurrent.Executors
 
 class ComposeActivity : AppCompatActivity() {
@@ -33,6 +31,14 @@ class ComposeActivity : AppCompatActivity() {
         bodyField = findViewById(R.id.composeBodyField)
         sendButton = findViewById(R.id.composeSendButton)
         cancelButton = findViewById(R.id.composeCancelButton)
+
+        toField.setText(intent.getStringExtra(EXTRA_TO).orEmpty())
+        subjectField.setText(intent.getStringExtra(EXTRA_SUBJECT).orEmpty())
+        val prefillBody = intent.getStringExtra(EXTRA_BODY).orEmpty()
+        bodyField.setText(prefillBody)
+        if (prefillBody.isNotEmpty()) {
+            bodyField.setSelection(0)
+        }
 
         sendButton.setOnClickListener { sendEmail() }
         cancelButton.setOnClickListener { finish() }
@@ -80,17 +86,14 @@ class ComposeActivity : AppCompatActivity() {
         }
     }
 
-    private fun actionBarSize(): Int {
-        val typedArray = theme.obtainStyledAttributes(intArrayOf(android.R.attr.actionBarSize))
-        return try {
-            typedArray.getDimensionPixelSize(0, 0)
-        } finally {
-            typedArray.recycle()
-        }
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         ioExecutor.shutdownNow()
+    }
+
+    companion object {
+        const val EXTRA_TO = "compose_to"
+        const val EXTRA_SUBJECT = "compose_subject"
+        const val EXTRA_BODY = "compose_body"
     }
 }
