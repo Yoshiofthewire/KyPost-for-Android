@@ -1,0 +1,40 @@
+package com.urlxl.mail.push
+
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+
+class LlamaFirebaseMessagingService : FirebaseMessagingService() {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onCreate() {
+        super.onCreate()
+        PushNotificationDispatcher.ensureChannel(this)
+    }
+
+    override fun onNewToken(token: String) {
+        val graph = PushRuntime.graph(applicationContext)
+        serviceScope.launch {
+            graph.syncCoordinator.syncProvidedToken(token)
+        }
+    }
+
+    override fun onMessageReceived(message: RemoteMessage) {
+        val payload = PushPayloadParser.parse(message.data) ?: return
+        val graph = PushRuntime.graph(applicationContext)
+        serviceScope.launch {
+            graph.repository.appendPayload(payload)
+        }
+        PushNotificationDispatcher.show(applicationContext, payload)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
+}
+

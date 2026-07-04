@@ -1,90 +1,61 @@
 # llama mail for Android
 
-llama mail for Android is a native Android email client focused on:
-- IMAP inbox read
-- SMTP send
-- Keyword-based inbox tabs driven by IMAP user flags
-- Best-effort 90-second inbox refresh while the inbox UI is in the foreground
+This app now includes a production push client flow for **Llama Labels notifications via Novu + FCM**.
 
-## Current app behavior
+## What this build does
 
-- App entry is `MainActivity`, which routes to `SettingsActivity` on first launch if required mail settings are missing.
-- After valid setup, the app opens `InboxActivity`.
-- Inbox supports folders from bottom navigation: Inbox, Spam, and Trash.
-- Compose flow is available in `ComposeActivity`.
-- Email detail view loads full HTML/plain content in `EmailDetailActivity`.
-- Swipe actions in inbox:
-	- swipe right: delete message in current folder
-	- swipe left: move message to `[Gmail]/All Mail`
-- Keyword tabs are generated from IMAP user flags and can be hidden/shown in `KeywordSettingsActivity`.
-- Theme selection is available in `ThemesActivity`.
+- Pairs device from desktop deep link / QR:
+  `llamalabels://novu-pair?app=<applicationIdentifier>&sub=<subscriberId>&hash=<subscriberHash>&api=<novuApiBase>`
+- Stores pairing state in DataStore (no backend secrets).
+- Registers FCM token directly with Novu on pair + token refresh.
+- Handles FCM data payload keys: `messageId`, `senderName`, `emailSubject`, `Keywords`.
+- Shows system notifications and keeps an in-app notification history.
+- Does not call Llama Labels backend endpoints from mobile runtime.
 
-## Runtime account setup (current default)
+## Firebase setup
 
-The app currently stores account settings in SharedPreferences, configured through the in-app Settings screen.
+1. Create/update your Firebase Android app for application id `com.urlxl.mail`.
+2. Download `google-services.json`.
+3. Place it at `app/google-services.json`.
+4. Ensure FCM is enabled in Firebase project settings.
 
-Required fields:
-- IMAP host
-- SMTP host
-- Username
-- Password
+## Notification permission behavior (Android 13+)
 
-Defaults:
-- IMAP port: `993`
-- SMTP port: `587`
-- IMAP folder: `INBOX`
+- App requests `POST_NOTIFICATIONS` at launch.
+- If denied, push payloads are still parsed and saved to in-app history when delivered to app process, but system notifications are not shown.
 
-## Optional build-time defaults
+## Pairing from desktop QR
 
-The Gradle build also supports injecting mail defaults into `BuildConfig` via Gradle properties.
-This is optional and mainly useful for local development.
+1. Desktop web shows QR containing deep link with `app`, `sub`, `hash`, optional `api`.
+2. In app Home screen, either:
+   - Tap **Scan QR**, or
+   - Paste deep link into **Pair from link** field.
+3. App validates required params and stores pairing.
+4. App immediately tries Novu token sync with retry backoff.
 
-Set these in `~/.gradle/gradle.properties` (or untracked project-local Gradle properties):
+## Troubleshooting checklist
 
-```properties
-mail.imap.host=imap.example.com
-mail.imap.port=993
-mail.smtp.host=smtp.example.com
-mail.smtp.port=587
-mail.username=user@example.com
-mail.password=app-password
-mail.imap.folder=INBOX
-```
-
-Do not commit real credentials.
+- Verify deep link scheme/host is exactly `llamalabels://novu-pair`.
+- Verify required query params exist: `app`, `sub`, `hash`.
+- Verify network access to Novu API base (`api` param or default `https://api.novu.co`).
+- Verify Firebase project config matches package `com.urlxl.mail`.
+- If token sync fails with 401/403/404, desktop-side pairing may be revoked.
+- If no visible notification on Android 13+, verify notification permission is granted.
 
 ## Build and test
-
-Run JVM unit tests:
 
 ```sh
 ./gradlew testDebugUnitTest
 ```
 
-Build debug APK:
-
 ```sh
 ./gradlew assembleDebug
 ```
 
-Install debug APK to connected device/emulator:
+## Test coverage included
 
-```sh
-./gradlew installDebug
-```
-
-Run instrumentation tests (device/emulator required):
-
-```sh
-./gradlew connectedDebugAndroidTest
-```
-
-## Tech snapshot
-
-- Module: `app`
-- Namespace/Application ID: `com.urlxl.mail`
-- Min SDK: `31`
-- Target SDK: `36`
-- Compile SDK: `36` (minor API level `1`)
-- Mail library: `org.eclipse.angus:jakarta.mail`
+- Deep-link parser tests
+- Pairing validation tests
+- Payload parser tests (`messageId`, `senderName`, `emailSubject`, `Keywords`)
+- Novu registration request mapper tests
 

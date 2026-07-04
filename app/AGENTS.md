@@ -10,6 +10,9 @@ Owns the Android app module build, manifest, source sets, resources, and test ex
 
 # Local Contracts
 
+- Keep push pairing local to mobile: no Llama Labels backend API calls from app runtime.
+- Pairing persistence and token sync state for Novu + FCM live in app-owned storage (DataStore).
+- Deep-link contract for pairing is `llamalabels://novu-pair` with required `app`, `sub`, and `hash` params.
 - Keep app behavior aligned with project goal: IMAP inbox read, SMTP send, keyword-based tab filtering.
 - Prefer one existing dependency for both IMAP and SMTP.
 - Avoid hardcoded secrets in committed files.
@@ -25,6 +28,7 @@ Owns the Android app module build, manifest, source sets, resources, and test ex
 # Verification
 
 - Run unit tests for logic changes under `app/src/test/`.
+- Run unit tests for push parser/mapper changes under `app/src/test/`.
 - Run Android instrumentation tests when UI/manifest behavior changes under `app/src/androidTest/`.
 
 # Child DOX Index

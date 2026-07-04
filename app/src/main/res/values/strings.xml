@@ -10,6 +10,7 @@
     <string name="menu_settings">Settings</string>
     <string name="menu_keywords">Keywords</string>
     <string name="menu_themes">Themes</string>
+    <string name="menu_push_pairing">Push notifications</string>
 
     <string name="imap_settings">IMAP Settings</string>
     <string name="imap_host_label">IMAP Host</string>
@@ -63,4 +64,17 @@
     <string name="compose_body_hint">Type your message here...</string>
     <string name="compose_send">Send</string>
     <string name="cancel">Cancel</string>
+
+    <string name="push_pairing_title">Push Notifications</string>
+    <string name="push_pairing_status_paired">Paired</string>
+    <string name="push_pairing_status_not_paired">Not paired</string>
+    <string name="push_pairing_resync">Re-sync token</string>
+    <string name="push_pairing_clear">Clear pairing</string>
+    <string name="push_pairing_latest_title">Latest push preview</string>
+    <string name="push_pairing_history_title">Notification history</string>
+    <string name="push_pairing_history_empty">No push notifications received yet</string>
+    <string name="push_pairing_scan_qr">Scan QR Code</string>
+    <string name="push_pairing_server_url_label">Server URL</string>
+    <string name="push_pairing_server_url_hint">https://your-server.example.com</string>
+    <string name="push_pairing_save_server_url">Save</string>
 </resources>

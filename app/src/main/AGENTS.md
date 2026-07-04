@@ -10,9 +10,14 @@ Owns production Android app code and resources.
 
 # Local Contracts
 
-- Mail config (IMAP/SMTP host, port, credentials) is persisted in `SharedPreferences` and entered via `SettingsActivity`.
-- On first run, app routes to `SettingsActivity` if settings are incomplete/missing.
-- After configuration, app routes to `InboxActivity` by default; settings remain accessible via inbox menu.
+- Launcher supports `llamalabels://novu-pair` deep links and QR/manual pairing for Novu push onboarding.
+- Pairing data is persisted via DataStore: application identifier, subscriber id/hash, api base, and paired-at timestamp.
+- Mobile registers FCM tokens directly with Novu and does not call Llama Labels backend APIs.
+- Incoming FCM payload parser contract keys are exact: `messageId`, `senderName`, `emailSubject`, `Keywords`.
+- Push notifications are shown via Android notification channel and copied into in-app history preview.
+- Android 13+ notification runtime permission is requested from launcher UI.
+- Launcher is a push-focused home screen in `MainActivity` that manages pairing, token sync actions, and push history preview.
+- Mail config (IMAP/SMTP host, port, credentials) is still persisted in `SharedPreferences` and entered via `SettingsActivity` for legacy mail screens.
 - Required fields for mail config: IMAP host, SMTP host, username, password. Ports default to 993 (IMAP) and 587 (SMTP). IMAP folder defaults to "INBOX".
 - Inbox tabs are derived from IMAP user flags (keywords) attached to messages.
 - Keyword tuning is managed in `KeywordSettingsActivity` and persists hidden/visible keyword headings.
@@ -31,6 +36,7 @@ Owns production Android app code and resources.
 # Verification
 
 - Add or update unit tests in `app/src/test/` for tab computation and filtering logic.
+- Add or update unit tests for deep-link parsing, pairing validation, payload parsing, and Novu request mapping.
 - Validate manifest registration when adding activities or permissions.
 
 # Child DOX Index
