@@ -13,7 +13,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -33,7 +32,6 @@ class InboxActivity : AppCompatActivity() {
     private lateinit var loadingSpinner: ProgressBar
     private lateinit var inboxRoot: View
     private lateinit var inboxContent: View
-    private lateinit var inboxTitle: TextView
     private lateinit var adapter: EmailAdapter
     private val ioExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -62,12 +60,23 @@ class InboxActivity : AppCompatActivity() {
         keywordSettings = KeywordSettings(this)
 
         initViews()
+        applyFolderTitle()
         applyTopInsetWithHeader(this, inboxContent)
+        applyBottomInset(bottomNav)
         applyInboxThemeChrome()
         setupRecyclerView()
         setupTabs()
         setupBottomNav()
         setupSwipeGestures()
+    }
+
+    private fun applyFolderTitle() {
+        val folderLabel = when (currentFolder) {
+            "Spam" -> getString(R.string.nav_spam)
+            "Trash" -> getString(R.string.nav_trash)
+            else -> getString(R.string.nav_inbox)
+        }
+        applyThemedTitle(this, getString(R.string.inbox_heading, folderLabel))
     }
 
     override fun onStart() {
@@ -105,7 +114,6 @@ class InboxActivity : AppCompatActivity() {
     private fun initViews() {
         inboxRoot = findViewById(R.id.inboxRoot)
         inboxContent = findViewById(R.id.inboxContent)
-        inboxTitle = findViewById(R.id.inboxTitle)
         recyclerView = findViewById(R.id.recyclerViewInbox)
         keywordTabs = findViewById(R.id.tabLayoutKeywords)
         bottomNav = findViewById(R.id.bottomNavigation)
@@ -122,10 +130,15 @@ class InboxActivity : AppCompatActivity() {
 
         inboxRoot.setBackgroundColor(bg)
         inboxContent.setBackgroundColor(bg)
-        inboxTitle.setTextColor(inkStrong)
         recyclerView.setBackgroundColor(bg)
 
-        keywordTabs.setBackgroundColor(panel)
+        // Render the keyword tabs as a single rounded pill bar rather than a hard-edged strip.
+        val density = resources.displayMetrics.density
+        keywordTabs.background = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 18f * density
+            setColor(panel)
+        }
         keywordTabs.tabRippleColor = ColorStateList.valueOf(adjustAlpha(accent, 0.22f))
         keywordTabs.setTabTextColors(ink, inkStrong)
         keywordTabs.setSelectedTabIndicatorColor(accent)
@@ -281,18 +294,21 @@ class InboxActivity : AppCompatActivity() {
                 R.id.nav_spam -> {
                     currentFolder = "Spam"
                     selectedTab = KeywordTabs.ALL
+                    applyFolderTitle()
                     refreshInbox()
                     true
                 }
                 R.id.nav_trash -> {
                     currentFolder = "Trash"
                     selectedTab = KeywordTabs.ALL
+                    applyFolderTitle()
                     refreshInbox()
                     true
                 }
                 R.id.nav_inbox -> {
                     currentFolder = "INBOX"
                     selectedTab = KeywordTabs.ALL
+                    applyFolderTitle()
                     refreshInbox()
                     true
                 }

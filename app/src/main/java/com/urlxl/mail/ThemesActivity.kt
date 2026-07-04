@@ -30,7 +30,19 @@ class ThemesActivity : AppCompatActivity() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val row = super.getView(position, convertView, parent) as TextView
                 val activePalette = getStoredThemePalette(this@ThemesActivity)
-                row.setBackgroundColor(Color.parseColor(activePalette.panel))
+                val cornerRadius = 16 * resources.displayMetrics.density
+                row.background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    this.cornerRadius = cornerRadius
+                    setColor(Color.parseColor(activePalette.panel))
+                    setStroke(
+                        (1 * resources.displayMetrics.density).toInt(),
+                        Color.parseColor(activePalette.line),
+                    )
+                }
+                val padH = (16 * resources.displayMetrics.density).toInt()
+                val padV = (14 * resources.displayMetrics.density).toInt()
+                row.setPadding(padH, padV, padH, padV)
                 row.setTextColor(Color.parseColor(activePalette.inkStrong))
 
                 val rowPalette = themePaletteFor(THEME_OPTIONS[position])

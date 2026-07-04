@@ -4,6 +4,7 @@
     <string name="compose_email">Compose Email</string>
     <string name="view_inbox">View Inbox</string>
     <string name="inbox_title">Inbox</string>
+    <string name="inbox_heading">Llama Mail - %1$s</string>
     <string name="inbox_message">Emails refresh every 90 seconds while this screen is open</string>
 
     <string name="settings_title">Email Settings</string>

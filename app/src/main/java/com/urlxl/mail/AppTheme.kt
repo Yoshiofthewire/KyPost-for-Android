@@ -117,6 +117,28 @@ fun applyThemeToActivity(activity: Activity) {
     applyThemeToViewTree(root, palette)
 }
 
+/** Sets the action-bar title and repaints just its text color for the active palette, without
+ *  re-theming the whole view tree (which would clobber custom backgrounds like the tab bar). */
+fun applyThemedTitle(activity: Activity, title: CharSequence) {
+    activity.title = title
+    if (activity is AppCompatActivity) {
+        val accent = Color.parseColor(getStoredThemePalette(activity).accent)
+        activity.supportActionBar?.title = styledTitle(title.toString(), readableOn(accent))
+    }
+}
+
+/** Pads the view's bottom by the system navigation-bar inset so edge-to-edge content (e.g. the
+ *  bottom navigation bar) clears the gesture/nav area. */
+fun applyBottomInset(view: View) {
+    val basePaddingBottom = view.paddingBottom
+    ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+        val bottomInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+        v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, basePaddingBottom + bottomInset)
+        insets
+    }
+    ViewCompat.requestApplyInsets(view)
+}
+
 fun applyTopInsetWithHeader(activity: Activity, root: View) {
     val basePaddingLeft = root.paddingLeft
     val basePaddingTop = root.paddingTop
@@ -125,11 +147,15 @@ fun applyTopInsetWithHeader(activity: Activity, root: View) {
 
     ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
         val topInset = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
+        // Under the enforced edge-to-edge of targetSdk 36, windowSoftInputMode="adjustResize" no
+        // longer shrinks the window for the keyboard, so pad by the IME inset ourselves. It reads 0
+        // whenever the keyboard is hidden, so screens without text fields are unaffected.
+        val imeInset = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
         view.setPadding(
             basePaddingLeft,
             basePaddingTop + topInset + actionBarSize(activity),
             basePaddingRight,
-            basePaddingBottom,
+            basePaddingBottom + imeInset,
         )
         insets
     }
@@ -175,6 +201,12 @@ private fun applyThemeToViewTree(view: View, palette: ThemePalette) {
             view.setTextColor(inkStrong)
             view.setHintTextColor(ink)
             view.background = fieldBackground(palette)
+            // A bare GradientDrawable carries no internal padding, so without this the text and
+            // hint sit flush against the rounded border. Preserve any larger top padding a
+            // multi-line field (e.g. the compose body) already declares.
+            val padH = (14 * density).toInt()
+            val padV = (12 * density).toInt()
+            view.setPadding(padH, maxOf(padV, view.paddingTop), padH, maxOf(padV, view.paddingBottom))
         }
         is Button -> {
             view.setTextColor(readableOn(accent))
@@ -196,12 +228,17 @@ private fun applyThemeToViewTree(view: View, palette: ThemePalette) {
     }
 
     if (view is ViewGroup) {
+        // The inbox list themes its own item views (rounded CardViews) in the adapter. Recursing
+        // into it here would overwrite each card's rounded background with a flat ColorDrawable,
+        // and since only already-bound rows get hit the rounding ends up inconsistent. Skip its
+        // whole subtree.
+        if (view is androidx.recyclerview.widget.RecyclerView) {
+            return
+        }
         // Keep panel containers in sync with the active palette. Always repaint (not just when
         // background == null) so switching themes without recreating the activity refreshes
         // containers that were already painted on a previous pass, not just newly-touched ones.
-        if (view !is androidx.recyclerview.widget.RecyclerView) {
-            view.setBackgroundColor(panelColor)
-        }
+        view.setBackgroundColor(panelColor)
         for (index in 0 until view.childCount) {
             applyThemeToViewTree(view.getChildAt(index), palette)
         }
@@ -213,7 +250,7 @@ private val density: Float get() = android.content.res.Resources.getSystem().dis
 private fun fieldBackground(palette: ThemePalette): GradientDrawable {
     return GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
-        cornerRadius = 8f * density
+        cornerRadius = 14f * density
         setColor(Color.parseColor(palette.panel))
         setStroke((2 * density).toInt(), Color.parseColor(palette.line))
     }
@@ -222,7 +259,7 @@ private fun fieldBackground(palette: ThemePalette): GradientDrawable {
 private fun buttonBackground(palette: ThemePalette): GradientDrawable {
     return GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE
-        cornerRadius = 8f * density
+        cornerRadius = 18f * density
         setColor(Color.parseColor(palette.accent))
     }
 }

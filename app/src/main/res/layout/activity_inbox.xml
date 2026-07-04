@@ -6,42 +6,51 @@
     android:layout_height="match_parent">
 
     <LinearLayout
-        android:id="@+id/inboxContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:paddingTop="16dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="0dp">
+        android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/inboxTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/inbox_title"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayoutKeywords"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:tabMode="scrollable" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerViewInbox"
+        <LinearLayout
+            android:id="@+id/inboxContent"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_marginTop="8dp"
-            android:paddingBottom="8dp" />
+            android:orientation="vertical"
+            android:paddingTop="8dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="0dp">
+
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabLayoutKeywords"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:tabMode="scrollable"
+                app:tabGravity="start"
+                app:tabMinWidth="0dp"
+                app:tabPaddingStart="18dp"
+                app:tabPaddingEnd="18dp"
+                app:tabIndicatorFullWidth="false"
+                app:tabIndicatorHeight="4dp"
+                app:tabIndicator="@drawable/tab_indicator_rounded"
+                app:tabIndicatorAnimationMode="elastic" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerViewInbox"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:layout_marginTop="8dp"
+                android:paddingBottom="8dp" />
+
+        </LinearLayout>
 
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:elevation="12dp"
             app:labelVisibilityMode="labeled"
             app:menu="@menu/bottom_nav_menu" />
 
