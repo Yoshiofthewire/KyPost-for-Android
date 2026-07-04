@@ -1,0 +1,112 @@
+package com.urlxl.mail.push
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+
+private const val ENCRYPTED_PREFS_FILE_NAME = "push_pairing_secure"
+
+private const val KEY_APP_ID = "pair_app"
+private const val KEY_SUBSCRIBER_ID = "pair_sub"
+private const val KEY_SUBSCRIBER_HASH = "pair_hash"
+private const val KEY_API_BASE = "pair_api"
+private const val KEY_SERVER_URL = "pair_srv"
+private const val KEY_RELAY_URL = "pair_relay"
+private const val KEY_PAIRING_TOKEN = "pair_pt"
+private const val KEY_PAIRED_AT = "pair_paired_at"
+
+/**
+ * Holds pairing proof material (subscriber hash, pairing token) in a Keystore-backed
+ * EncryptedSharedPreferences file rather than the plaintext DataStore used for the rest
+ * of the push state (history, sync status, server URL setting).
+ */
+class SecurePairingStore(context: Context) {
+    private val prefs: SharedPreferences by lazy { buildEncryptedPrefs(context.applicationContext) }
+
+    private val _pairing = MutableStateFlow<PairingData?>(null)
+    val pairing: StateFlow<PairingData?> = _pairing.asStateFlow()
+
+    init {
+        _pairing.value = readPairing()
+    }
+
+    suspend fun savePairing(pairing: PairingData) {
+        withContext(Dispatchers.IO) {
+            prefs.edit()
+                .putString(KEY_APP_ID, pairing.applicationIdentifier)
+                .putString(KEY_SUBSCRIBER_ID, pairing.subscriberId)
+                .putString(KEY_SUBSCRIBER_HASH, pairing.subscriberHash)
+                .putString(KEY_API_BASE, pairing.apiBase)
+                .putString(KEY_RELAY_URL, pairing.relayUrl)
+                .putString(KEY_PAIRING_TOKEN, pairing.pairingToken)
+                .apply {
+                    if (pairing.serverUrl.isNullOrBlank()) remove(KEY_SERVER_URL) else putString(KEY_SERVER_URL, pairing.serverUrl)
+                }
+                .putLong(KEY_PAIRED_AT, pairing.pairedAtEpochMs)
+                .commit()
+        }
+        _pairing.value = readPairing()
+    }
+
+    suspend fun clearPairing() {
+        withContext(Dispatchers.IO) {
+            prefs.edit()
+                .remove(KEY_APP_ID)
+                .remove(KEY_SUBSCRIBER_ID)
+                .remove(KEY_SUBSCRIBER_HASH)
+                .remove(KEY_API_BASE)
+                .remove(KEY_SERVER_URL)
+                .remove(KEY_RELAY_URL)
+                .remove(KEY_PAIRING_TOKEN)
+                .remove(KEY_PAIRED_AT)
+                .commit()
+        }
+        _pairing.value = null
+    }
+
+    private fun readPairing(): PairingData? {
+        val appId = prefs.getString(KEY_APP_ID, null).orEmpty()
+        val subId = prefs.getString(KEY_SUBSCRIBER_ID, null).orEmpty()
+        val subHash = prefs.getString(KEY_SUBSCRIBER_HASH, null).orEmpty()
+        val apiBase = prefs.getString(KEY_API_BASE, null).orEmpty()
+        val relayUrl = prefs.getString(KEY_RELAY_URL, null).orEmpty()
+        val pairingToken = prefs.getString(KEY_PAIRING_TOKEN, null).orEmpty()
+        val pairedAt = if (prefs.contains(KEY_PAIRED_AT)) prefs.getLong(KEY_PAIRED_AT, 0L) else null
+
+        if (appId.isBlank() || subId.isBlank() || subHash.isBlank() || apiBase.isBlank() ||
+            relayUrl.isBlank() || pairingToken.isBlank() || pairedAt == null
+        ) {
+            return null
+        }
+
+        return PairingData(
+            applicationIdentifier = appId,
+            subscriberId = subId,
+            subscriberHash = subHash,
+            apiBase = apiBase,
+            serverUrl = prefs.getString(KEY_SERVER_URL, null),
+            relayUrl = relayUrl,
+            pairingToken = pairingToken,
+            pairedAtEpochMs = pairedAt,
+        )
+    }
+
+    private fun buildEncryptedPrefs(appContext: Context): SharedPreferences {
+        val masterKey = MasterKey.Builder(appContext)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        return EncryptedSharedPreferences.create(
+            appContext,
+            ENCRYPTED_PREFS_FILE_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    }
+}

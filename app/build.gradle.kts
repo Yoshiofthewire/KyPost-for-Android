@@ -75,6 +75,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    implementation(libs.androidx.security.crypto)
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.okhttp3:okhttp:5.2.1")
     implementation("com.squareup.okhttp3:logging-interceptor:5.2.1")
