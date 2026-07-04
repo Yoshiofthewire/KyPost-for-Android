@@ -8,7 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.Button
-import android.widget.EditText
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
@@ -38,11 +37,10 @@ class PushPairingActivity : AppCompatActivity() {
     private lateinit var btnResyncToken: Button
     private lateinit var btnClearPairing: Button
     private lateinit var btnScanQr: Button
-    private lateinit var btnSaveServerUrl: Button
-    private lateinit var serverUrlInput: EditText
 
     private lateinit var statusText: TextView
     private lateinit var subscriberText: TextView
+    private lateinit var deviceIdText: TextView
     private lateinit var lastSyncText: TextView
     private lateinit var syncErrorText: TextView
     private lateinit var latestSenderText: TextView
@@ -78,7 +76,6 @@ class PushPairingActivity : AppCompatActivity() {
         btnResyncToken.setOnClickListener { viewModel.resyncToken() }
         btnClearPairing.setOnClickListener { viewModel.clearPairing() }
         btnScanQr.setOnClickListener { scanQr() }
-        btnSaveServerUrl.setOnClickListener { viewModel.setServerUrl(serverUrlInput.text.toString().trim()) }
 
         applyThemeToActivity(this)
 
@@ -95,7 +92,6 @@ class PushPairingActivity : AppCompatActivity() {
         applyPrimaryButtonTheme(this, btnResyncToken)
         applyPrimaryButtonTheme(this, btnClearPairing)
         applyPrimaryButtonTheme(this, btnScanQr)
-        applyPrimaryButtonTheme(this, btnSaveServerUrl)
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -108,6 +104,7 @@ class PushPairingActivity : AppCompatActivity() {
         btnScanQr = findViewById(R.id.btnScanQr)
         statusText = findViewById(R.id.pushPairingStatus)
         subscriberText = findViewById(R.id.pushPairingSubscriber)
+        deviceIdText = findViewById(R.id.pushPairingDeviceId)
         lastSyncText = findViewById(R.id.pushPairingLastSync)
         syncErrorText = findViewById(R.id.pushPairingSyncError)
         latestSenderText = findViewById(R.id.pushPairingLatestSender)
@@ -116,19 +113,14 @@ class PushPairingActivity : AppCompatActivity() {
         historyEmptyText = findViewById(R.id.pushPairingHistoryEmpty)
         btnResyncToken = findViewById(R.id.btnResyncToken)
         btnClearPairing = findViewById(R.id.btnClearPairing)
-        btnSaveServerUrl = findViewById(R.id.btnSaveServerUrl)
-        serverUrlInput = findViewById(R.id.serverUrlInput)
     }
 
     private fun render(state: PushHomeUiState) {
-        if (!serverUrlInput.isFocused && serverUrlInput.text.toString() != state.serverUrlSetting.orEmpty()) {
-            serverUrlInput.setText(state.serverUrlSetting.orEmpty())
-        }
-
         statusText.text = getString(
             if (state.pairing == null) R.string.push_pairing_status_not_paired else R.string.push_pairing_status_paired,
         )
         subscriberText.text = "Subscriber ID: ${state.pairing?.subscriberId?.let { maskTail(it, 6) } ?: "-"}"
+        deviceIdText.text = "Device ID: ${state.pairing?.deviceId ?: "-"}"
         lastSyncText.text = "Last token sync: ${state.lastTokenSyncAtEpochMs?.let { dateFormat.format(Date(it)) } ?: "-"}"
 
         if (state.syncError.isNullOrBlank()) {
@@ -147,7 +139,6 @@ class PushPairingActivity : AppCompatActivity() {
         btnResyncToken.isEnabled = !state.isWorking
         btnClearPairing.isEnabled = !state.isWorking
         btnScanQr.isEnabled = !state.isWorking
-        btnSaveServerUrl.isEnabled = !state.isWorking
 
         val message = state.localMessage
         if (!message.isNullOrBlank()) {

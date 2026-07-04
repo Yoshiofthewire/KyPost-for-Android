@@ -32,7 +32,6 @@ class PushHomeViewModel(application: Application) : AndroidViewModel(application
             syncError = repo.syncError,
             latestPayload = repo.latestPayload,
             history = repo.history,
-            serverUrlSetting = repo.serverUrlSetting,
             isWorking = working,
             localMessage = local,
         )
@@ -58,33 +57,28 @@ class PushHomeViewModel(application: Application) : AndroidViewModel(application
     fun pairFromLink(link: String) {
         scope.launch {
             isWorking.value = true
-            val parsed = NovuPairingDeepLinkParser.parse(link)
+            val parsed = NativePairingDeepLinkParser.parse(link)
             when (parsed) {
                 is PairingParseResult.Error -> {
                     localMessage.value = parsed.reason
                     isWorking.value = false
                 }
                 is PairingParseResult.Success -> {
-                    val manualServerUrl = graph.repository.state.first().serverUrlSetting
-                    val resolution = RelayEndpointResolver.resolve(
-                        qrRelay = parsed.pairing.relayUrl.takeIf { it.isNotBlank() },
+                    val resolution = NativeRegistrationEndpointResolver.resolve(
+                        qrReg = parsed.pairing.registrationUrl.takeIf { it.isNotBlank() },
                         qrServerUrl = parsed.pairing.serverUrl,
-                        manualServerUrl = manualServerUrl,
                     )
                     when (resolution) {
-                        is RelayEndpointResolver.Resolution.MissingServerUrl -> {
-                            localMessage.value = "Set a Server URL before pairing"
+                        is NativeRegistrationEndpointResolver.Resolution.MissingServerUrl -> {
+                            localMessage.value = "Pairing QR is missing a server URL"
                             isWorking.value = false
                         }
-                        is RelayEndpointResolver.Resolution.Resolved -> {
-                            val pending = parsed.pairing.copy(
-                                relayUrl = resolution.relayUrl,
-                                serverUrl = resolution.effectiveServerUrl,
-                            )
+                        is NativeRegistrationEndpointResolver.Resolution.Resolved -> {
+                            val pending = parsed.pairing.copy(registrationUrl = resolution.registrationUrl)
                             val result = graph.syncCoordinator.attemptPairing(pending)
                             localMessage.value = when (result) {
-                                is RelaySyncResult.Success -> "Device paired and token synced"
-                                is RelaySyncResult.Error -> {
+                                is NativeRegistrationResult.Success -> "Device paired and token synced"
+                                is NativeRegistrationResult.Error -> {
                                     val suffix = if (result.expiredPairingToken) " — rescan the pairing QR code" else ""
                                     "Pairing failed: ${result.message}$suffix"
                                 }
@@ -111,20 +105,13 @@ class PushHomeViewModel(application: Application) : AndroidViewModel(application
             isWorking.value = true
             val result = graph.syncCoordinator.syncCurrentPairingToken()
             localMessage.value = when (result) {
-                is RelaySyncResult.Success -> "Token synced"
-                is RelaySyncResult.Error -> {
+                is NativeRegistrationResult.Success -> "Token synced"
+                is NativeRegistrationResult.Error -> {
                     val suffix = if (result.expiredPairingToken) " — rescan the pairing QR code" else ""
                     "Token sync failed: ${result.message}$suffix"
                 }
             }
             isWorking.value = false
-        }
-    }
-
-    fun setServerUrl(url: String) {
-        scope.launch {
-            graph.repository.saveServerUrlSetting(url)
-            localMessage.value = "Server URL saved"
         }
     }
 
@@ -140,8 +127,6 @@ data class PushHomeUiState(
     val syncError: String? = null,
     val latestPayload: PushPayload? = null,
     val history: List<PushPayload> = emptyList(),
-    val serverUrlSetting: String? = null,
     val isWorking: Boolean = false,
     val localMessage: String? = null,
 )
-

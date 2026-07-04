@@ -58,7 +58,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="novu-pair"
+                    android:host="native-pair"
                     android:scheme="llamalabels" />
             </intent-filter>
         </activity>

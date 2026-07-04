@@ -12,13 +12,12 @@ import kotlinx.coroutines.withContext
 
 private const val ENCRYPTED_PREFS_FILE_NAME = "push_pairing_secure"
 
-private const val KEY_APP_ID = "pair_app"
 private const val KEY_SUBSCRIBER_ID = "pair_sub"
 private const val KEY_SUBSCRIBER_HASH = "pair_hash"
-private const val KEY_API_BASE = "pair_api"
 private const val KEY_SERVER_URL = "pair_srv"
-private const val KEY_RELAY_URL = "pair_relay"
+private const val KEY_REGISTRATION_URL = "pair_reg"
 private const val KEY_PAIRING_TOKEN = "pair_pt"
+private const val KEY_DEVICE_ID = "pair_device_id"
 private const val KEY_PAIRED_AT = "pair_paired_at"
 
 /**
@@ -39,14 +38,13 @@ class SecurePairingStore(context: Context) {
     suspend fun savePairing(pairing: PairingData) {
         withContext(Dispatchers.IO) {
             prefs.edit()
-                .putString(KEY_APP_ID, pairing.applicationIdentifier)
                 .putString(KEY_SUBSCRIBER_ID, pairing.subscriberId)
                 .putString(KEY_SUBSCRIBER_HASH, pairing.subscriberHash)
-                .putString(KEY_API_BASE, pairing.apiBase)
-                .putString(KEY_RELAY_URL, pairing.relayUrl)
+                .putString(KEY_SERVER_URL, pairing.serverUrl)
+                .putString(KEY_REGISTRATION_URL, pairing.registrationUrl)
                 .putString(KEY_PAIRING_TOKEN, pairing.pairingToken)
                 .apply {
-                    if (pairing.serverUrl.isNullOrBlank()) remove(KEY_SERVER_URL) else putString(KEY_SERVER_URL, pairing.serverUrl)
+                    if (pairing.deviceId.isNullOrBlank()) remove(KEY_DEVICE_ID) else putString(KEY_DEVICE_ID, pairing.deviceId)
                 }
                 .putLong(KEY_PAIRED_AT, pairing.pairedAtEpochMs)
                 .commit()
@@ -57,13 +55,12 @@ class SecurePairingStore(context: Context) {
     suspend fun clearPairing() {
         withContext(Dispatchers.IO) {
             prefs.edit()
-                .remove(KEY_APP_ID)
                 .remove(KEY_SUBSCRIBER_ID)
                 .remove(KEY_SUBSCRIBER_HASH)
-                .remove(KEY_API_BASE)
                 .remove(KEY_SERVER_URL)
-                .remove(KEY_RELAY_URL)
+                .remove(KEY_REGISTRATION_URL)
                 .remove(KEY_PAIRING_TOKEN)
+                .remove(KEY_DEVICE_ID)
                 .remove(KEY_PAIRED_AT)
                 .commit()
         }
@@ -71,28 +68,26 @@ class SecurePairingStore(context: Context) {
     }
 
     private fun readPairing(): PairingData? {
-        val appId = prefs.getString(KEY_APP_ID, null).orEmpty()
         val subId = prefs.getString(KEY_SUBSCRIBER_ID, null).orEmpty()
         val subHash = prefs.getString(KEY_SUBSCRIBER_HASH, null).orEmpty()
-        val apiBase = prefs.getString(KEY_API_BASE, null).orEmpty()
-        val relayUrl = prefs.getString(KEY_RELAY_URL, null).orEmpty()
+        val serverUrl = prefs.getString(KEY_SERVER_URL, null).orEmpty()
+        val registrationUrl = prefs.getString(KEY_REGISTRATION_URL, null).orEmpty()
         val pairingToken = prefs.getString(KEY_PAIRING_TOKEN, null).orEmpty()
         val pairedAt = if (prefs.contains(KEY_PAIRED_AT)) prefs.getLong(KEY_PAIRED_AT, 0L) else null
 
-        if (appId.isBlank() || subId.isBlank() || subHash.isBlank() || apiBase.isBlank() ||
-            relayUrl.isBlank() || pairingToken.isBlank() || pairedAt == null
+        if (subId.isBlank() || subHash.isBlank() || serverUrl.isBlank() ||
+            registrationUrl.isBlank() || pairingToken.isBlank() || pairedAt == null
         ) {
             return null
         }
 
         return PairingData(
-            applicationIdentifier = appId,
             subscriberId = subId,
             subscriberHash = subHash,
-            apiBase = apiBase,
-            serverUrl = prefs.getString(KEY_SERVER_URL, null),
-            relayUrl = relayUrl,
+            serverUrl = serverUrl,
+            registrationUrl = registrationUrl,
             pairingToken = pairingToken,
+            deviceId = prefs.getString(KEY_DEVICE_ID, null),
             pairedAtEpochMs = pairedAt,
         )
     }

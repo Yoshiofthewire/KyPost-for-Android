@@ -19,7 +19,6 @@ private val Context.pushDataStore by preferencesDataStore(name = "push_state")
 private val KEY_LAST_SYNC_AT = longPreferencesKey("sync_last_at")
 private val KEY_SYNC_ERROR = stringPreferencesKey("sync_error")
 private val KEY_HISTORY_JSON = stringPreferencesKey("history_json")
-private val KEY_SERVER_URL_SETTING = stringPreferencesKey("server_url_setting")
 
 private const val HISTORY_LIMIT = 30
 
@@ -37,7 +36,6 @@ class PushRepository(private val context: Context) {
     suspend fun savePairing(pairing: PairingData) {
         securePairingStore.savePairing(pairing)
         context.pushDataStore.edit { prefs ->
-            if (!pairing.serverUrl.isNullOrBlank()) prefs[KEY_SERVER_URL_SETTING] = pairing.serverUrl
             prefs.remove(KEY_SYNC_ERROR)
         }
     }
@@ -47,12 +45,6 @@ class PushRepository(private val context: Context) {
         context.pushDataStore.edit { prefs ->
             prefs.remove(KEY_LAST_SYNC_AT)
             prefs.remove(KEY_SYNC_ERROR)
-        }
-    }
-
-    suspend fun saveServerUrlSetting(url: String) {
-        context.pushDataStore.edit { prefs ->
-            if (url.isBlank()) prefs.remove(KEY_SERVER_URL_SETTING) else prefs[KEY_SERVER_URL_SETTING] = url.trim()
         }
     }
 
@@ -81,7 +73,6 @@ class PushRepository(private val context: Context) {
             syncError = prefs[KEY_SYNC_ERROR],
             history = history,
             latestPayload = history.firstOrNull(),
-            serverUrlSetting = prefs[KEY_SERVER_URL_SETTING],
         )
     }
 
@@ -97,6 +88,4 @@ data class PushState(
     val syncError: String?,
     val latestPayload: PushPayload?,
     val history: List<PushPayload>,
-    val serverUrlSetting: String? = null,
 )
-

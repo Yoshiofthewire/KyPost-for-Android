@@ -10,10 +10,10 @@ Owns production Android app code and resources.
 
 # Local Contracts
 
-- Launcher supports `llamalabels://novu-pair` deep links and QR/manual pairing for Novu push onboarding.
-- Pairing proof material (application identifier, subscriber id/hash, api base, relay URL, pairing token, paired-at timestamp) is persisted in a Keystore-backed `EncryptedSharedPreferences` file (`SecurePairingStore`), not the plaintext DataStore used for history/sync/settings.
-- FCM token sync goes through a server-side relay endpoint (from the pairing QR's `relay`/`srv` fields, or a user-configured Server URL setting) rather than calling Novu directly — direct Novu credential registration is not used since the app can never safely hold `NOVU_SECRET_KEY`.
-- A device is marked paired only after the relay token sync call returns success (`ok:true`/`synced:true`); a QR scan alone does not pair the device.
+- Launcher supports `llamalabels://native-pair` deep links and QR pairing for native (non-Novu) push onboarding. The legacy `llamalabels://novu-pair` scheme and Novu relay path are removed entirely — the backend no longer serves them.
+- Pairing proof material (subscriber id/hash, server URL, registration URL, pairing token, last-known device id, paired-at timestamp) is persisted in a Keystore-backed `EncryptedSharedPreferences` file (`SecurePairingStore`), not the plaintext DataStore used for history/sync.
+- FCM token sync goes through the backend's native registration endpoint (`reg` from the pairing QR, or derived as `{srv}/api/notifications/native/register`) — there is no user-editable Server URL setting; `srv` is a required QR field and is always sourced from the QR.
+- A device is marked paired only after the native register call returns success (`ok:true`/`synced:true`); a QR scan alone does not pair the device. `503` from the registration endpoint means the backend is missing `PAIRING_SECRET` (a persistent misconfiguration) and is not retried.
 - Incoming FCM payload parser contract keys are exact: `messageId`, `senderName`, `emailSubject`, `Keywords`.
 - Push notifications are shown via Android notification channel and copied into in-app history preview.
 - Android 13+ notification runtime permission is requested from launcher UI.
@@ -37,7 +37,7 @@ Owns production Android app code and resources.
 # Verification
 
 - Add or update unit tests in `app/src/test/` for tab computation and filtering logic.
-- Add or update unit tests for deep-link parsing, pairing validation, relay endpoint resolution, payload parsing, and relay request mapping.
+- Add or update unit tests for deep-link parsing, pairing validation, native registration endpoint resolution, payload parsing, and native registration request mapping.
 - `SecurePairingStore` (EncryptedSharedPreferences-backed) requires a real Android Keystore and is covered by an instrumentation test in `app/src/androidTest/` instead of a JVM unit test.
 - Validate manifest registration when adding activities or permissions.
 

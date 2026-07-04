@@ -4,8 +4,8 @@ import android.content.Context
 
 class PushGraph(context: Context) {
     val repository = PushRepository(context)
-    val relayClient = RelaySyncClient()
-    val syncCoordinator = PushSyncCoordinator(repository = repository, relayClient = relayClient)
+    val registrationClient = NativeRegistrationClient()
+    val syncCoordinator = PushSyncCoordinator(repository = repository, registrationClient = registrationClient)
 }
 
 object PushRuntime {

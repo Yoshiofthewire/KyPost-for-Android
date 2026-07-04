@@ -73,7 +73,4 @@
     <string name="push_pairing_history_title">Notification history</string>
     <string name="push_pairing_history_empty">No push notifications received yet</string>
     <string name="push_pairing_scan_qr">Scan QR Code</string>
-    <string name="push_pairing_server_url_label">Server URL</string>
-    <string name="push_pairing_server_url_hint">https://your-server.example.com</string>
-    <string name="push_pairing_save_server_url">Save</string>
 </resources>

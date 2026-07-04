@@ -9,18 +9,16 @@ class PairingValidatorTest {
 
     @Test
     fun validate_requiredFields() {
-        assertFalse(PairingValidator.validate("", "sub", "hash").isValid)
-        assertFalse(PairingValidator.validate("app", "", "hash").isValid)
-        assertFalse(PairingValidator.validate("app", "sub", "").isValid)
-        assertTrue(PairingValidator.validate("app", "sub", "hash").isValid)
+        assertFalse(PairingValidator.validate("", "hash").isValid)
+        assertFalse(PairingValidator.validate("sub", "").isValid)
+        assertTrue(PairingValidator.validate("sub", "hash").isValid)
     }
 
     @Test
     fun validate_missingHash_returnsSpecificMessage() {
-        val result = PairingValidator.validate("app", "sub", "")
+        val result = PairingValidator.validate("sub", "")
 
         assertFalse(result.isValid)
         assertEquals("Missing hash parameter", result.message)
     }
 }
-

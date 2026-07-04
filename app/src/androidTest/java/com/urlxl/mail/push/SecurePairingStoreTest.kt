@@ -18,13 +18,12 @@ class SecurePairingStoreTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
     private val pairing = PairingData(
-        applicationIdentifier = "app-id",
         subscriberId = "subscriber-id",
         subscriberHash = "top-secret-subscriber-hash",
-        apiBase = "https://api.novu.co",
         serverUrl = "https://server.example.com",
-        relayUrl = "https://server.example.com/api/notifications/novu/relay/fcm",
+        registrationUrl = "https://server.example.com/api/notifications/native/register",
         pairingToken = "top-secret-pairing-token",
+        deviceId = "resolved-device-id",
         pairedAtEpochMs = 1_000L,
     )
 

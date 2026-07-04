@@ -5,42 +5,31 @@ import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
-const val DEFAULT_NOVU_API_BASE = "https://api.novu.co"
-
 @Serializable
 data class PairingData(
-    val applicationIdentifier: String,
     val subscriberId: String,
     val subscriberHash: String,
-    val apiBase: String,
-    val serverUrl: String?,
-    val relayUrl: String,
+    val serverUrl: String,
+    val registrationUrl: String,
     val pairingToken: String,
+    val deviceId: String?,
     val pairedAtEpochMs: Long,
 )
 
-object RelayEndpointResolver {
+object NativeRegistrationEndpointResolver {
     sealed class Resolution {
-        data class Resolved(val relayUrl: String, val effectiveServerUrl: String?) : Resolution()
+        data class Resolved(val registrationUrl: String) : Resolution()
         object MissingServerUrl : Resolution()
     }
 
-    fun resolve(qrRelay: String?, qrServerUrl: String?, manualServerUrl: String?): Resolution {
-        val relay = qrRelay?.takeIf { it.isNotBlank() }
-        if (relay != null) {
-            val effectiveServerUrl = qrServerUrl?.takeIf { it.isNotBlank() }
-                ?: manualServerUrl?.takeIf { it.isNotBlank() }
-            return Resolution.Resolved(relayUrl = relay, effectiveServerUrl = effectiveServerUrl)
-        }
+    fun resolve(qrReg: String?, qrServerUrl: String?): Resolution {
+        val reg = qrReg?.takeIf { it.isNotBlank() }
+        if (reg != null) return Resolution.Resolved(reg)
 
-        val srv = (qrServerUrl?.takeIf { it.isNotBlank() } ?: manualServerUrl?.takeIf { it.isNotBlank() })
-            ?.trimEnd('/')
+        val srv = qrServerUrl?.takeIf { it.isNotBlank() }?.trimEnd('/')
             ?: return Resolution.MissingServerUrl
 
-        return Resolution.Resolved(
-            relayUrl = "$srv/api/notifications/novu/relay/fcm",
-            effectiveServerUrl = srv,
-        )
+        return Resolution.Resolved("$srv/api/notifications/native/register")
     }
 }
 
@@ -55,67 +44,54 @@ sealed class PairingParseResult {
 }
 
 object PairingValidator {
-    fun validate(app: String, sub: String, hash: String): PairingValidationResult {
-        if (app.isBlank()) return PairingValidationResult(false, "Missing app parameter")
+    fun validate(sub: String, hash: String): PairingValidationResult {
         if (sub.isBlank()) return PairingValidationResult(false, "Missing sub parameter")
         if (hash.isBlank()) return PairingValidationResult(false, "Missing hash parameter")
         return PairingValidationResult(true)
     }
 }
 
-object NovuPairingDeepLinkParser {
+object NativePairingDeepLinkParser {
     fun parse(link: String, nowEpochMs: Long = System.currentTimeMillis()): PairingParseResult {
         val uri = runCatching { URI(link.trim()) }.getOrNull()
             ?: return PairingParseResult.Error("Invalid deep link")
 
         if (!uri.scheme.equals("llamalabels", ignoreCase = true) ||
-            !uri.host.equals("novu-pair", ignoreCase = true)
+            !uri.host.equals("native-pair", ignoreCase = true)
         ) {
             return PairingParseResult.Error("Unsupported deep link")
         }
 
         val query = parseQuery(uri.rawQuery.orEmpty())
 
-        val app = query["app"].orEmpty().trim()
         val sub = query["sub"].orEmpty().trim()
         val hash = query["hash"].orEmpty().trim()
-        val apiRaw = query["api"].orEmpty().trim()
-        val apiBase = normalizeApiBase(apiRaw.ifBlank { DEFAULT_NOVU_API_BASE })
-            ?: return PairingParseResult.Error("Invalid api base")
-        val srv = query["srv"].orEmpty().trim().takeIf { it.isNotBlank() }
-        val relay = query["relay"].orEmpty().trim().takeIf { it.isNotBlank() }
+        val srv = query["srv"].orEmpty().trim()
+        val reg = query["reg"].orEmpty().trim().takeIf { it.isNotBlank() }
         val pt = query["pt"].orEmpty().trim()
 
-        val validation = PairingValidator.validate(app = app, sub = sub, hash = hash)
+        val validation = PairingValidator.validate(sub = sub, hash = hash)
         if (!validation.isValid) {
             return PairingParseResult.Error(validation.message ?: "Invalid pairing parameters")
         }
         if (pt.isBlank()) {
             return PairingParseResult.Error("Missing pairing token")
         }
+        if (srv.isBlank()) {
+            return PairingParseResult.Error("Missing server URL")
+        }
 
         return PairingParseResult.Success(
             PairingData(
-                applicationIdentifier = app,
                 subscriberId = sub,
                 subscriberHash = hash,
-                apiBase = apiBase,
                 serverUrl = srv,
-                relayUrl = relay.orEmpty(),
+                registrationUrl = reg.orEmpty(),
                 pairingToken = pt,
+                deviceId = null,
                 pairedAtEpochMs = nowEpochMs,
             ),
         )
-    }
-
-    private fun normalizeApiBase(raw: String): String? {
-        val value = raw.trim().trimEnd('/')
-        val uri = runCatching { URI(value) }.getOrNull() ?: return null
-        val scheme = uri.scheme?.lowercase() ?: return null
-        if (scheme != "https" && scheme != "http") return null
-        val host = uri.host ?: return null
-        val path = uri.path.orEmpty().trimEnd('/').takeIf { it.isNotBlank() } ?: ""
-        return "$scheme://$host$path"
     }
 
     private fun parseQuery(rawQuery: String): Map<String, String> {
@@ -135,4 +111,3 @@ object NovuPairingDeepLinkParser {
         return URLDecoder.decode(value, StandardCharsets.UTF_8.name())
     }
 }
-
