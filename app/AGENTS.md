@@ -10,10 +10,22 @@ Owns the Android app module build, manifest, source sets, resources, and test ex
 
 # Local Contracts
 
-- Keep push pairing local to mobile: no Llama Labels backend API calls from app runtime.
-- Pairing persistence and token sync state for Novu + FCM live in app-owned storage (DataStore).
-- Deep-link contract for pairing is `llamalabels://novu-pair` with required `app`, `sub`, and `hash` params.
-- Keep app behavior aligned with project goal: IMAP inbox read, SMTP send, keyword-based tab filtering.
+- `sub`/`hash` pairing (Part 1 of `iOS_Mobile_notify.md`-style docs) is the single auth mechanism
+  for every backend call the app makes: native push pull, contact sync (`/api/contacts/sync`), and
+  mail relay (`/api/inbox`, `/api/inbox/folders`, `/api/inbox/actions`, `/api/mail/draft`,
+  `/api/mail/send`). No bearer tokens, no cookies, no separate mobile login. (This corrects an
+  earlier "no backend API calls from app runtime" claim here — native push registration/pull
+  already called the backend before contact sync and mail relay were added.)
+- Pairing proof material lives in a Keystore-backed `EncryptedSharedPreferences` file
+  (`SecurePairingStore`), not plaintext DataStore — see `app/src/main/AGENTS.md` for the exact
+  storage split. Non-secret sync state (cursors, delivery mode, history) is plaintext DataStore.
+- Deep-link contract for pairing is `llamalabels://native-pair` with required `sub`, `hash`, `srv`,
+  and `pt` params (`reg` optional). The legacy `novu-pair` scheme is removed entirely.
+- Keep app behavior aligned with project goal: IMAP inbox read, SMTP send, keyword-based tab
+  filtering, PLUS an alternate backend-relay connection mode (`MailConnectionMode.RELAY` in
+  `MailSettings`, default `MANUAL_IMAP` so existing installs are unaffected) and two-way contact
+  sync (`contacts/` package). A local Room database (`data/AppDatabase`) is the UI's read model for
+  mail regardless of which connection mode supplied it, and the persistence layer for contacts.
 - Prefer one existing dependency for both IMAP and SMTP.
 - Avoid hardcoded secrets in committed files.
 - For user-visible behavior changes, update this file or a closer child AGENTS.md.

@@ -17,15 +17,47 @@ Owns production Android app code and resources.
 - Incoming FCM payload parser contract keys are exact: `messageId`, `senderName`, `emailSubject`, `Keywords`.
 - Push notifications are shown via Android notification channel and copied into in-app history preview.
 - Android 13+ notification runtime permission is requested from launcher UI.
-- Launcher is a push-focused home screen in `MainActivity` that manages pairing, token sync actions, and push history preview.
-- Mail config (IMAP/SMTP host, port, credentials) is still persisted in `SharedPreferences` and entered via `SettingsActivity` for legacy mail screens.
-- Required fields for mail config: IMAP host, SMTP host, username, password. Ports default to 993 (IMAP) and 587 (SMTP). IMAP folder defaults to "INBOX".
-- Inbox tabs are derived from IMAP user flags (keywords) attached to messages.
+- `MainActivity` is a router, not a home screen: it picks `SettingsActivity` vs `InboxActivity`
+  based on whether the active connection mode is actually usable (`MailSettings.isConfigured()`
+  for Manual IMAP, device-paired check for Relay) and finishes itself. It does not manage pairing,
+  token sync, or push history UI — that lives in `push/PushPairingActivity`, reached from the
+  Inbox overflow menu.
+- Mail config (IMAP/SMTP host, port, credentials) is persisted in plaintext `SharedPreferences` and
+  entered via `SettingsActivity`, only when `MailConnectionMode.MANUAL_IMAP` is selected. Required
+  fields: IMAP host, SMTP host, username, password. Ports default to 993 (IMAP) and 587 (SMTP).
+  IMAP folder defaults to "INBOX".
+- `MailConnectionMode` (`MailSettings.getConnectionMode()`/`setConnectionMode()`) toggles between
+  `MANUAL_IMAP` (default — existing IMAP/SMTP flow, unchanged) and `RELAY` (backend-relay mode; the
+  device must already be paired via `PushPairingActivity` — no separate mobile login or app-specific
+  mail password). Never build UI for `/api/imap/config` fields on mobile — that endpoint is
+  cookie-only/web-only; an unconfigured-relay-mode fetch is an empty state, not a form.
+- `mail/MailSource` is the abstraction behind both modes: `mail/ImapMailSource` wraps the existing
+  `MailGateway` unchanged; `mail/RelayMailSource` calls the six relay endpoints over OkHttp with
+  `sub`/`hash` query-param auth (same pattern as `push/NativeRegistration.kt`). `mail/MailRepository`
+  picks the active source, writes results into the Room cache (`data/AppDatabase`,
+  `EmailDao.replaceFolderSnapshot`), and is what `InboxActivity`/`EmailDetailActivity`/
+  `ComposeActivity` call — none of them instantiate `MailGateway` directly anymore.
+- Inbox tabs: Manual IMAP mode derives them from IMAP user flags (keywords) attached to messages,
+  unchanged (`KeywordTabs`). Relay mode's tabs come from the server's `tabs`/`label` response fields
+  instead — the two are genuinely different concepts, not unified into one function.
 - Keyword tuning is managed in `KeywordSettingsActivity` and persists hidden/visible keyword headings.
 - Theme selection is managed in `ThemesActivity` and uses the shared theme name list based on `theme.ts` palettes.
-- Keyword refresh is best-effort every 90 seconds while inbox UI is foregrounded.
+- Keyword refresh is best-effort every 90 seconds while inbox UI is foregrounded (both connection modes).
 - Background keyword staleness is accepted; app catches up on next foreground refresh.
-- Use existing lightweight mail transport dependency for both IMAP and SMTP.
+- Use existing lightweight mail transport dependency for direct IMAP/SMTP (Manual IMAP mode only).
+- Contact sync (`contacts/` package) mirrors `push/`'s repository+coordinator+singleton-graph shape:
+  `ContactSyncClient` (OkHttp, `sub`/`hash` auth) pulls/pushes `/api/contacts/sync`, `ContactSyncRepository`
+  applies the delta into Room and reconciles locally-created contacts' server-assigned uid (no
+  correlation id in v1 — matched by content/order, see `ContactSyncReconciliation`), and
+  `ContactCursorStore` persists a per-subscriber cursor exactly like `PushRepository`'s pull cursor.
+  Entry point is the Inbox overflow menu ("Contacts") — the bottom nav's 4 fixed items are untouched.
+  CardDAV (the doc's alternative sync surface) has no mobile client — it is web/OS-driven.
+- Room (`androidx.room`, `data/AppDatabase`) is a deliberate, user-requested exception to "do not
+  add new dependencies unless they reduce overall code size/complexity" below — it's the local email
+  and contacts cache. KSP (Room's annotation processor) needs
+  `android.disallowKotlinSourceSets=false` in `gradle.properties` to coexist with AGP's built-in
+  Kotlin compilation (this project applies no separate `org.jetbrains.kotlin.android` plugin) — a
+  known KSP/AGP-9 interaction (google/ksp#2729), not a general opt-out of that migration.
 
 # Work Guidance
 
@@ -40,6 +72,12 @@ Owns production Android app code and resources.
 - Add or update unit tests for deep-link parsing, pairing validation, native registration endpoint resolution, payload parsing, and native registration request mapping.
 - `SecurePairingStore` (EncryptedSharedPreferences-backed) requires a real Android Keystore and is covered by an instrumentation test in `app/src/androidTest/` instead of a JVM unit test.
 - Validate manifest registration when adding activities or permissions.
+- Room DAO behavior (e.g. `EmailDao.replaceFolderSnapshot`, contact upsert/delete) is covered by
+  instrumentation tests in `app/src/androidTest/` using `Room.inMemoryDatabaseBuilder` (no
+  Robolectric dependency in this project — don't add one for this).
+- Add or update unit tests for contact-sync reconciliation/delta-merge logic and relay response
+  mapping (HTTP status → `MailOutcome`/`ContactSyncOutcome`, and the `to`/`cc`/`bcc`
+  comma-string-not-array request shape) under `app/src/test/`.
 
 # Child DOX Index
 

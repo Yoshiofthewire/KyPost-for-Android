@@ -1,0 +1,201 @@
+package com.urlxl.mail.mail
+
+import com.urlxl.mail.Email
+import com.urlxl.mail.push.PairingData
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+
+private val JSON_MEDIA_TYPE = "application/json".toMediaType()
+private const val NOT_CONFIGURED_PREFIX = "imap configuration is required"
+
+/**
+ * Talks to the six relay endpoints in Mobile_Mail_Relay.md. Blocking by design to match
+ * [MailSource]'s synchronous interface — callers already run on a background executor thread.
+ * Auth is `sub`/`hash` query params only, sourced from the pairing state (never headers/cookies).
+ */
+class RelayMailSource(
+    private val pairingProvider: () -> PairingData?,
+    private val json: Json = Json { ignoreUnknownKeys = true },
+    private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
+) : MailSource {
+
+    override fun fetchInbox(mailbox: String, limit: Int): MailOutcome<MailFetchResult> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/inbox") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val url = base.newBuilder()
+            .addQueryParameter("sub", pairing.subscriberId)
+            .addQueryParameter("hash", pairing.subscriberHash)
+            .addQueryParameter("limit", limit.toString())
+            .addQueryParameter("mailbox", mailbox)
+            .build()
+        return execute(Request.Builder().url(url).get().build()) { code, body ->
+            if (code != 200) return@execute mapErrorCode(code, body)
+            val parsed = runCatching { json.decodeFromString<RelayInboxResponseDto>(body) }.getOrNull()
+                ?: return@execute MailOutcome.UpstreamFailure("Malformed inbox response")
+            val messages = parsed.byTab.flatMap { (tab, emails) -> emails.map { it.toUiEmail(tab) } }
+            MailOutcome.Success(MailFetchResult(tabs = parsed.tabs, messages = messages))
+        }
+    }
+
+    override fun listFolders(parent: String?): MailOutcome<FolderListResult> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/inbox/folders") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val urlBuilder = base.newBuilder()
+            .addQueryParameter("sub", pairing.subscriberId)
+            .addQueryParameter("hash", pairing.subscriberHash)
+        if (!parent.isNullOrBlank()) urlBuilder.addQueryParameter("parent", parent)
+        return execute(Request.Builder().url(urlBuilder.build()).get().build()) { code, body ->
+            if (code != 200) return@execute mapErrorCode(code, body)
+            val parsed = runCatching { json.decodeFromString<RelayFolderListResponseDto>(body) }.getOrNull()
+                ?: return@execute MailOutcome.UpstreamFailure("Malformed folder list response")
+            MailOutcome.Success(
+                FolderListResult(parent = parsed.parent, folders = parsed.folders.map { FolderInfo(it.path, it.deletable) }),
+            )
+        }
+    }
+
+    override fun createFolder(parent: String, name: String): MailOutcome<Unit> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/inbox/folders") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val body = json.encodeToString(RelayFolderCreateRequestDto(parent = parent, name = name))
+        val request = Request.Builder().url(authed(base, pairing)).post(body.toRequestBody(JSON_MEDIA_TYPE)).build()
+        return execute(request) { code, rawBody -> mutationOutcome(code, rawBody) }
+    }
+
+    override fun renameFolder(folder: String, name: String): MailOutcome<Unit> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/inbox/folders") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val body = json.encodeToString(RelayFolderRenameRequestDto(folder = folder, name = name))
+        val request = Request.Builder().url(authed(base, pairing)).put(body.toRequestBody(JSON_MEDIA_TYPE)).build()
+        return execute(request) { code, rawBody -> mutationOutcome(code, rawBody) }
+    }
+
+    override fun deleteFolder(folder: String): MailOutcome<Unit> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/inbox/folders") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val url = authed(base, pairing).newBuilder().addQueryParameter("folder", folder).build()
+        return execute(Request.Builder().url(url).delete().build()) { code, rawBody -> mutationOutcome(code, rawBody) }
+    }
+
+    override fun performAction(
+        action: MailAction,
+        messageIds: List<String>,
+        mailbox: String,
+        targetMailbox: String?,
+    ): MailOutcome<MailActionOutcome> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/inbox/actions") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val requestDto = RelayActionRequestDto(
+            action = action.wireValue(),
+            messageIds = messageIds,
+            mailbox = mailbox,
+            targetMailbox = targetMailbox,
+        )
+        val body = json.encodeToString(requestDto)
+        val request = Request.Builder().url(authed(base, pairing)).post(body.toRequestBody(JSON_MEDIA_TYPE)).build()
+        return execute(request) { code, rawBody ->
+            if (code != 200) return@execute mapErrorCode(code, rawBody)
+            val parsed = runCatching { json.decodeFromString<RelayActionResponseDto>(rawBody) }.getOrNull()
+                ?: return@execute MailOutcome.UpstreamFailure("Malformed action response")
+            // ok:false with a non-empty failed[] is still a partial success — processed ids already
+            // took effect (Mobile_Mail_Relay.md Part 2's explicit callout).
+            MailOutcome.Success(
+                MailActionOutcome(processed = parsed.processed, failed = parsed.failed.map { it.messageId to it.error }),
+            )
+        }
+    }
+
+    override fun saveDraft(draft: MailDraft): MailOutcome<Unit> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/mail/draft") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val body = json.encodeToString(draft.toWireDto())
+        val request = Request.Builder().url(authed(base, pairing)).post(body.toRequestBody(JSON_MEDIA_TYPE)).build()
+        return execute(request) { code, rawBody -> mutationOutcome(code, rawBody) }
+    }
+
+    override fun sendMail(draft: MailDraft): MailOutcome<MailSendOutcome> {
+        val pairing = pairingProvider() ?: return MailOutcome.Unauthorized("Device is not paired")
+        val base = baseUrl(pairing, "/api/mail/send") ?: return MailOutcome.BadRequest("Server URL is not valid")
+        val body = json.encodeToString(draft.toWireDto())
+        val request = Request.Builder().url(authed(base, pairing)).post(body.toRequestBody(JSON_MEDIA_TYPE)).build()
+        return execute(request) { code, rawBody ->
+            if (code != 200) return@execute mapErrorCode(code, rawBody)
+            val parsed = runCatching { json.decodeFromString<RelaySendResponseDto>(rawBody) }.getOrNull()
+                ?: return@execute MailOutcome.UpstreamFailure("Malformed send response")
+            MailOutcome.Success(MailSendOutcome(sentSaved = parsed.sentSaved, warning = parsed.warning))
+        }
+    }
+
+    override fun fetchMessageBody(messageId: String, folder: String): MailOutcome<MailMessageBody> {
+        // /api/inbox already returns each message's full body inline (Mobile_Mail_Relay.md Part 2)
+        // — there is no separate fetch-one-message endpoint. MailRepository.fetchBody serves this
+        // from the Room cache instead of calling here; this only runs on an uncached cache miss.
+        return MailOutcome.BadRequest("Relay mode has no separate message-body endpoint")
+    }
+
+    private fun mutationOutcome(code: Int, rawBody: String): MailOutcome<Unit> =
+        if (code == 200) MailOutcome.Success(Unit) else mapErrorCode(code, rawBody)
+
+    private fun <T> mapErrorCode(code: Int, rawBody: String): MailOutcome<T> = when (code) {
+        400 -> if (rawBody.contains(NOT_CONFIGURED_PREFIX, ignoreCase = true)) {
+            MailOutcome.NotConfigured(rawBody)
+        } else {
+            MailOutcome.BadRequest(rawBody.ifBlank { "Malformed request" })
+        }
+        401 -> MailOutcome.Unauthorized("Bad hash or unknown subscriber")
+        502 -> MailOutcome.UpstreamFailure("Upstream IMAP/SMTP failure")
+        503 -> MailOutcome.ServiceUnavailable(rawBody.ifBlank { "Mail relay is temporarily unavailable" })
+        else -> MailOutcome.UpstreamFailure("Mail relay request failed ($code)")
+    }
+
+    private fun <T> execute(request: Request, onResponse: (code: Int, body: String) -> MailOutcome<T>): MailOutcome<T> {
+        val result = runCatching {
+            okHttpClient.newCall(request).execute().use { response ->
+                response.code to response.body?.string().orEmpty()
+            }
+        }
+        val (code, body) = result.getOrNull()
+            ?: return MailOutcome.UpstreamFailure(result.exceptionOrNull()?.message ?: "Network error")
+        return onResponse(code, body)
+    }
+
+    private fun baseUrl(pairing: PairingData, path: String): HttpUrl? =
+        "${pairing.serverUrl.trimEnd('/')}$path".toHttpUrlOrNull()
+
+    private fun authed(base: HttpUrl, pairing: PairingData): HttpUrl = base.newBuilder()
+        .addQueryParameter("sub", pairing.subscriberId)
+        .addQueryParameter("hash", pairing.subscriberHash)
+        .build()
+}
+
+private fun MailAction.wireValue(): String = when (this) {
+    MailAction.DELETE -> "delete"
+    MailAction.ARCHIVE -> "archive"
+    MailAction.SPAM -> "spam"
+    MailAction.READ -> "read"
+    MailAction.MOVE -> "move"
+}
+
+private fun MailDraft.toWireDto(): RelayMailRequestDto =
+    RelayMailRequestDto(to = to, cc = cc, bcc = bcc, subject = subject, body = body, mode = mode)
+
+private fun RelayEmailDto.toUiEmail(tab: String): Email = Email(
+    id = messageId,
+    subject = subject,
+    sender = sender,
+    preview = body.take(140),
+    sentTo = sentTo,
+    cc = cc,
+    bcc = bcc,
+    body = body,
+    label = label.ifBlank { tab },
+    status = status,
+    atUtc = atUtc,
+    sourceMode = "relay",
+)

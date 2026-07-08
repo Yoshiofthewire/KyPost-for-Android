@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.urlxl.mail.contacts.ContactsRuntime
 import com.urlxl.mail.push.PushNotificationDispatcher
 import com.urlxl.mail.push.PushRuntime
 
@@ -23,5 +24,6 @@ class LlamaApp : Application(), DefaultLifecycleObserver {
     override fun onStart(owner: LifecycleOwner) {
         // App moved to the foreground.
         PushRuntime.graph(this).pullCoordinator.pullNowAsync()
+        ContactsRuntime.graph(this).coordinator.syncNowAsync()
     }
 }

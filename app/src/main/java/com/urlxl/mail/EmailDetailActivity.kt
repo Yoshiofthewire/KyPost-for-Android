@@ -11,12 +11,15 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.urlxl.mail.mail.MailOutcome
+import com.urlxl.mail.mail.MailRepository
+import com.urlxl.mail.mail.MailRuntime
 import java.util.concurrent.Executors
 
 class EmailDetailActivity : AppCompatActivity() {
 
     private val ioExecutor = Executors.newSingleThreadExecutor()
-    private lateinit var mailGateway: MailGateway
+    private lateinit var mailRepository: MailRepository
     private lateinit var actionButtons: List<ImageButton>
     private lateinit var divider: View
     private lateinit var webView: WebView
@@ -51,7 +54,7 @@ class EmailDetailActivity : AppCompatActivity() {
         subjectView.text = emailSubject
         fromView.text = getString(R.string.email_from) + " " + emailSender
 
-        mailGateway = MailGateway.fromSettings(this)
+        mailRepository = MailRuntime.graph(this).repository
 
         val actionArchive = findViewById<ImageButton>(R.id.actionArchive)
         val actionSpam = findViewById<ImageButton>(R.id.actionSpam)
@@ -65,22 +68,16 @@ class EmailDetailActivity : AppCompatActivity() {
         )
         applyDetailChrome()
 
-        MailBackgroundExecutor.submit { mailGateway.markAsRead(emailId, emailFolder) }
+        MailBackgroundExecutor.submit { mailRepository.markRead(emailId, emailFolder) }
 
         actionArchive.setOnClickListener {
-            runMailActionAndFinish(getString(R.string.action_archive)) {
-                it.moveEmail(emailId, "[Gmail]/All Mail", emailFolder)
-            }
+            runMailActionAndFinish(getString(R.string.action_archive)) { it.archive(emailId, emailFolder) }
         }
         actionDelete.setOnClickListener {
-            runMailActionAndFinish(getString(R.string.action_delete)) {
-                it.deleteEmail(emailId, emailFolder)
-            }
+            runMailActionAndFinish(getString(R.string.action_delete)) { it.delete(emailId, emailFolder) }
         }
         actionSpam.setOnClickListener {
-            runMailActionAndFinish(getString(R.string.action_spam)) {
-                it.moveEmail(emailId, "Spam", emailFolder)
-            }
+            runMailActionAndFinish(getString(R.string.action_spam)) { it.spam(emailId, emailFolder) }
         }
         actionReply.setOnClickListener {
             openCompose(
@@ -119,7 +116,8 @@ class EmailDetailActivity : AppCompatActivity() {
         }
 
         ioExecutor.execute {
-            val content = mailGateway.fetchEmailContent(emailId, emailFolder)
+            val outcome = mailRepository.fetchBody(emailId, emailFolder)
+            val content = (outcome as? MailOutcome.Success)?.value
             val bodyToRender = content?.html?.takeIf { it.isNotBlank() } ?: TextUtils.htmlEncode(emailPreview)
             val palette = getStoredThemePalette(this)
 
@@ -179,9 +177,9 @@ class EmailDetailActivity : AppCompatActivity() {
         actionButtons.forEach { applyIconButtonTheme(this, it) }
     }
 
-    private fun runMailActionAndFinish(actionLabel: String, action: (MailGateway) -> Unit) {
+    private fun runMailActionAndFinish(actionLabel: String, action: (MailRepository) -> Unit) {
         Toast.makeText(this, actionLabel, Toast.LENGTH_SHORT).show()
-        MailBackgroundExecutor.submit { action(mailGateway) }
+        MailBackgroundExecutor.submit { action(mailRepository) }
         finish()
     }
 

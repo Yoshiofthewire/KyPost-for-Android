@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.gms.google-services")
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -67,8 +68,16 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.cardview)
     implementation(libs.angus.mail)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.room.runtime)
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }

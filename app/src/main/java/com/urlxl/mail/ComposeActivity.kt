@@ -5,6 +5,10 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.urlxl.mail.mail.MailDraft
+import com.urlxl.mail.mail.MailOutcome
+import com.urlxl.mail.mail.MailRuntime
+import com.urlxl.mail.mail.userFacingMessage
 import java.util.concurrent.Executors
 
 class ComposeActivity : AppCompatActivity() {
@@ -67,20 +71,22 @@ class ComposeActivity : AppCompatActivity() {
         sendButton.text = "Sending..."
 
         ioExecutor.execute {
-            try {
-                val mailSettings = MailSettings(this)
-                val mailGateway = MailGateway(mailSettings.getConfig())
-                mailGateway.sendEmail(to, subject, body)
-
-                runOnUiThread {
-                    Toast.makeText(this, "Email sent successfully", Toast.LENGTH_SHORT).show()
-                    finish()
-                }
-            } catch (ex: Exception) {
-                runOnUiThread {
-                    sendButton.isEnabled = true
-                    sendButton.text = getString(R.string.compose_send)
-                    Toast.makeText(this, "Failed to send email: ${ex.message}", Toast.LENGTH_SHORT).show()
+            val outcome = MailRuntime.graph(this).repository.send(MailDraft(to = to, subject = subject, body = body))
+            runOnUiThread {
+                when (outcome) {
+                    is MailOutcome.Success -> {
+                        val warning = outcome.value.warning
+                        // The send already succeeded even when sentSaved is false — surface the
+                        // warning as a non-blocking notice, not a failure.
+                        val message = warning.ifBlank { "Email sent successfully" }
+                        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                    else -> {
+                        sendButton.isEnabled = true
+                        sendButton.text = getString(R.string.compose_send)
+                        Toast.makeText(this, outcome.userFacingMessage(), Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }

@@ -3,8 +3,20 @@ package com.urlxl.mail
 import android.content.Context
 import android.content.SharedPreferences
 
+enum class MailConnectionMode { MANUAL_IMAP, RELAY }
+
 class MailSettings(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    /** Default MANUAL_IMAP preserves existing installs' behavior with zero migration. */
+    fun getConnectionMode(): MailConnectionMode {
+        val stored = prefs.getString(KEY_CONNECTION_MODE, null)
+        return MailConnectionMode.entries.find { it.name == stored } ?: MailConnectionMode.MANUAL_IMAP
+    }
+
+    fun setConnectionMode(mode: MailConnectionMode) {
+        prefs.edit().putString(KEY_CONNECTION_MODE, mode.name).apply()
+    }
 
     fun isConfigured(): Boolean {
         return getImapHost().isNotBlank() &&
@@ -55,6 +67,7 @@ class MailSettings(context: Context) {
         private const val KEY_USERNAME = "username"
         private const val KEY_PASSWORD = "password"
         private const val KEY_IMAP_FOLDER = "imap_folder"
+        private const val KEY_CONNECTION_MODE = "connection_mode"
     }
 }
 

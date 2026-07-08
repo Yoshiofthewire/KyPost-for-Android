@@ -1,0 +1,28 @@
+package com.urlxl.mail.data
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+/**
+ * Local cache row for one message, populated by either [com.urlxl.mail.mail.ImapMailSource] or
+ * [com.urlxl.mail.mail.RelayMailSource]. This is the UI's read model regardless of which source
+ * is active, since Relay mode has no delta/cursor sync (a live full re-fetch would otherwise be
+ * needed on every screen visit).
+ */
+@Entity(tableName = "emails")
+data class EmailEntity(
+    @PrimaryKey val messageId: String,
+    val folder: String,
+    val sender: String,
+    val sentTo: String = "",
+    val cc: String = "",
+    val bcc: String = "",
+    val subject: String,
+    val preview: String = "",
+    val body: String? = null,
+    val label: String = "",
+    val keywordsJson: String = "[]",
+    val status: String = "unread",
+    val atUtc: String? = null,
+    val sourceMode: String,
+)

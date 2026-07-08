@@ -6,4 +6,13 @@ data class Email(
     val sender: String,
     val preview: String,
     val keywords: Set<String> = emptySet(),
+    val folder: String = "",
+    val sentTo: String = "",
+    val cc: String = "",
+    val bcc: String = "",
+    val body: String? = null,
+    val label: String = "",
+    val status: String = "unread",
+    val atUtc: String? = null,
+    val sourceMode: String = "imap",
 )

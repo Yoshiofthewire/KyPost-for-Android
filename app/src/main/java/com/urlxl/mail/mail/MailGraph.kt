@@ -1,0 +1,39 @@
+package com.urlxl.mail.mail
+
+import android.content.Context
+import com.urlxl.mail.MailGateway
+import com.urlxl.mail.MailSettings
+import com.urlxl.mail.data.DataRuntime
+import com.urlxl.mail.push.PushRuntime
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+
+class MailGraph(context: Context) {
+    private val appContext = context.applicationContext
+    private val mailSettings = MailSettings(appContext)
+    private val imapSource: MailSource = ImapMailSource(MailGateway.fromSettings(appContext))
+    private val relaySource: MailSource = RelayMailSource(
+        // Non-suspend by design (MailSource is a blocking interface) but always fresh: reads the
+        // same PushRepository-backed pairing state the push/pull path uses, never a stale copy.
+        // Safe to block here — this only ever runs on a background executor thread, never main.
+        pairingProvider = { runBlocking { PushRuntime.graph(appContext).repository.state.first().pairing } },
+    )
+
+    val repository = MailRepository(
+        db = DataRuntime.graph(appContext).database,
+        imapSource = imapSource,
+        relaySource = relaySource,
+        mailSettings = mailSettings,
+    )
+}
+
+object MailRuntime {
+    @Volatile
+    private var graphInstance: MailGraph? = null
+
+    fun graph(context: Context): MailGraph {
+        return graphInstance ?: synchronized(this) {
+            graphInstance ?: MailGraph(context.applicationContext).also { graphInstance = it }
+        }
+    }
+}

@@ -8,7 +8,6 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -21,6 +20,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.tabs.TabLayout
+import com.urlxl.mail.mail.MailFetchResult
+import com.urlxl.mail.mail.MailOutcome
+import com.urlxl.mail.mail.MailRepository
+import com.urlxl.mail.mail.MailRuntime
+import com.urlxl.mail.mail.userFacingMessage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -35,7 +39,7 @@ class InboxActivity : AppCompatActivity() {
     private lateinit var adapter: EmailAdapter
     private val ioExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
-    private lateinit var mailGateway: MailGateway
+    private lateinit var mailRepository: MailRepository
     private lateinit var keywordSettings: KeywordSettings
     private var currentFolder = "INBOX"
     private var lastAppliedThemeName: String = ""
@@ -56,7 +60,7 @@ class InboxActivity : AppCompatActivity() {
         applyThemeToActivity(this)
         lastAppliedThemeName = getStoredThemeName(this)
 
-        mailGateway = MailGateway.fromSettings(this)
+        mailRepository = MailRuntime.graph(this).repository
         keywordSettings = KeywordSettings(this)
 
         initViews()
@@ -201,24 +205,18 @@ class InboxActivity : AppCompatActivity() {
             loadingSpinner.visibility = android.view.View.VISIBLE
         }
         ioExecutor.execute {
-            try {
-                val emails = mailGateway.fetchEmails(currentFolder)
-                val error = mailGateway.lastError
-                keywordSettings.rememberKeywords(emails.flatMap { it.keywords }.toSet())
-                runOnUiThread {
-                    loadingSpinner.visibility = android.view.View.GONE
-                    allEmails = emails
-                    rebuildTabs(emails)
-                    renderFilteredEmails()
-                    if (error != null) {
-                        Toast.makeText(this, "Couldn't refresh inbox: $error", Toast.LENGTH_LONG).show()
-                    }
-                }
-            } catch (ex: Exception) {
-                Log.e(TAG, "Failed to refresh inbox", ex)
-                runOnUiThread {
-                    loadingSpinner.visibility = android.view.View.GONE
-                    Toast.makeText(this, "Couldn't refresh inbox: ${ex.message}", Toast.LENGTH_LONG).show()
+            val outcome: MailOutcome<MailFetchResult> = mailRepository.refreshFolder(currentFolder)
+            val emails = (outcome as? MailOutcome.Success)?.value?.messages
+                ?: mailRepository.cachedEmails(currentFolder)
+            val errorMessage = outcome.userFacingMessage()
+            keywordSettings.rememberKeywords(emails.flatMap { it.keywords }.toSet())
+            runOnUiThread {
+                loadingSpinner.visibility = android.view.View.GONE
+                allEmails = emails
+                rebuildTabs(emails)
+                renderFilteredEmails()
+                if (errorMessage != null) {
+                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -256,10 +254,11 @@ class InboxActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menu?.add(0, MENU_KEYWORDS, 0, R.string.menu_keywords)
-        menu?.add(0, MENU_SETTINGS, 1, R.string.menu_settings)
-        menu?.add(0, MENU_THEMES, 2, R.string.menu_themes)
-        menu?.add(0, MENU_PUSH_PAIRING, 3, R.string.menu_push_pairing)
-        menu?.add(0, MENU_ABOUT, 4, R.string.menu_about)
+        menu?.add(0, MENU_CONTACTS, 1, R.string.menu_contacts)
+        menu?.add(0, MENU_SETTINGS, 2, R.string.menu_settings)
+        menu?.add(0, MENU_THEMES, 3, R.string.menu_themes)
+        menu?.add(0, MENU_PUSH_PAIRING, 4, R.string.menu_push_pairing)
+        menu?.add(0, MENU_ABOUT, 5, R.string.menu_about)
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -267,6 +266,10 @@ class InboxActivity : AppCompatActivity() {
         return when (item.itemId) {
             MENU_KEYWORDS -> {
                 startActivity(Intent(this, KeywordSettingsActivity::class.java))
+                true
+            }
+            MENU_CONTACTS -> {
+                startActivity(Intent(this, com.urlxl.mail.contacts.ContactsListActivity::class.java))
                 true
             }
             MENU_SETTINGS -> {
@@ -398,14 +401,14 @@ class InboxActivity : AppCompatActivity() {
                         allEmails = allEmails.filter { it.id != email.id }
                         renderFilteredEmails()
                         MailBackgroundExecutor.submit {
-                            mailGateway.moveEmail(email.id, "[Gmail]/All Mail", currentFolder)
+                            mailRepository.archive(email.id, currentFolder)
                         }
                     }
                     ItemTouchHelper.RIGHT -> {
                         allEmails = allEmails.filter { it.id != email.id }
                         renderFilteredEmails()
                         MailBackgroundExecutor.submit {
-                            mailGateway.deleteEmail(email.id, currentFolder)
+                            mailRepository.delete(email.id, currentFolder)
                         }
                     }
                 }
@@ -415,13 +418,13 @@ class InboxActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val TAG = "InboxActivity"
         private const val REFRESH_INTERVAL_MS = 90_000L
         private const val MENU_KEYWORDS = 0
-        private const val MENU_SETTINGS = 1
-        private const val MENU_THEMES = 2
-        private const val MENU_PUSH_PAIRING = 3
-        private const val MENU_ABOUT = 4
+        private const val MENU_CONTACTS = 1
+        private const val MENU_SETTINGS = 2
+        private const val MENU_THEMES = 3
+        private const val MENU_PUSH_PAIRING = 4
+        private const val MENU_ABOUT = 5
         private val SWIPE_ARCHIVE_COLOR = Color.parseColor("#2E7D32")
         private val SWIPE_DELETE_COLOR = Color.parseColor("#C62828")
     }
