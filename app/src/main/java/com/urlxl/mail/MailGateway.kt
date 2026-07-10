@@ -40,7 +40,7 @@ class MailGateway(private val config: MailAccountConfig) {
     var lastError: String? = null
         private set
 
-    // The UI addresses folders by logical role ("Spam", "Trash", archive) but servers name those
+    // The UI addresses folders by logical role ("Junk", "Trash", archive) but servers name those
     // folders inconsistently (Gmail's "[Gmail]/Spam", dovecot's "INBOX.Spam", "Junk", ...). Resolve
     // each role to a real folder name once per store and cache it so we don't relist every action.
     private val resolvedFolderCache = mutableMapOf<String, String>()

@@ -72,11 +72,11 @@
                     android:src="@drawable/ic_archive" />
 
                 <ImageButton
-                    android:id="@+id/actionSpam"
+                    android:id="@+id/actionJunk"
                     android:layout_width="44dp"
                     android:layout_height="44dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_spam"
+                    android:contentDescription="@string/action_junk"
                     android:padding="10dp"
                     android:src="@drawable/ic_spam" />
 

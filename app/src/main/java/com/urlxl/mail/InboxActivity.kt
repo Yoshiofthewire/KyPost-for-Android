@@ -79,7 +79,7 @@ class InboxActivity : AppCompatActivity() {
 
     private fun applyFolderTitle() {
         val folderLabel = when (currentFolder) {
-            "Spam" -> getString(R.string.nav_spam)
+            "Junk" -> getString(R.string.nav_junk)
             "Trash" -> getString(R.string.nav_trash)
             else -> getString(R.string.nav_inbox)
         }
@@ -357,8 +357,8 @@ class InboxActivity : AppCompatActivity() {
                     startActivity(Intent(this, ComposeActivity::class.java))
                     true
                 }
-                R.id.nav_spam -> {
-                    currentFolder = "Spam"
+                R.id.nav_junk -> {
+                    currentFolder = "Junk"
                     selectedTab = KeywordTabs.ALL
                     applyFolderTitle()
                     refreshInbox()

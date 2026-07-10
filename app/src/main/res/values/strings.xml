@@ -48,7 +48,7 @@
 
     <string name="nav_inbox">Inbox</string>
     <string name="nav_compose">Compose</string>
-    <string name="nav_spam">Spam</string>
+    <string name="nav_junk">Junk</string>
     <string name="nav_trash">Trash</string>
 
     <string name="email_title">Email</string>
@@ -59,7 +59,7 @@
     <string name="reply">Reply</string>
 
     <string name="action_archive">Archive</string>
-    <string name="action_spam">Mark as spam</string>
+    <string name="action_junk">Mark as junk</string>
     <string name="action_delete">Delete</string>
     <string name="action_reply">Reply</string>
     <string name="action_reply_all">Reply all</string>

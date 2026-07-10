@@ -7,8 +7,8 @@
         android:id="@+id/nav_compose"
         android:title="@string/nav_compose" />
     <item
-        android:id="@+id/nav_spam"
-        android:title="@string/nav_spam" />
+        android:id="@+id/nav_junk"
+        android:title="@string/nav_junk" />
     <item
         android:id="@+id/nav_trash"
         android:title="@string/nav_trash" />

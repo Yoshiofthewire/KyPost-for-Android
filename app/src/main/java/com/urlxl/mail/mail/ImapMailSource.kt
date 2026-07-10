@@ -42,7 +42,7 @@ class ImapMailSource(private val gateway: MailGateway) : MailSource {
             when (action) {
                 MailAction.DELETE -> gateway.deleteEmail(id, mailbox)
                 MailAction.ARCHIVE -> gateway.moveEmail(id, "[Gmail]/All Mail", mailbox)
-                MailAction.SPAM -> gateway.moveEmail(id, "Spam", mailbox)
+                MailAction.SPAM -> gateway.moveEmail(id, "Junk", mailbox)
                 MailAction.READ -> gateway.markAsRead(id, mailbox)
                 MailAction.MOVE -> gateway.moveEmail(id, targetMailbox.orEmpty(), mailbox)
             }

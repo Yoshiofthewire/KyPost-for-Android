@@ -57,14 +57,14 @@ class EmailDetailActivity : AppCompatActivity() {
         mailRepository = MailRuntime.graph(this).repository
 
         val actionArchive = findViewById<ImageButton>(R.id.actionArchive)
-        val actionSpam = findViewById<ImageButton>(R.id.actionSpam)
+        val actionJunk = findViewById<ImageButton>(R.id.actionJunk)
         val actionDelete = findViewById<ImageButton>(R.id.actionDelete)
         val actionReply = findViewById<ImageButton>(R.id.actionReply)
         val actionReplyAll = findViewById<ImageButton>(R.id.actionReplyAll)
         val actionForward = findViewById<ImageButton>(R.id.actionForward)
         actionButtons = listOf(
             actionReply, actionReplyAll, actionForward,
-            actionArchive, actionSpam, actionDelete,
+            actionArchive, actionJunk, actionDelete,
         )
         applyDetailChrome()
 
@@ -76,8 +76,8 @@ class EmailDetailActivity : AppCompatActivity() {
         actionDelete.setOnClickListener {
             runMailActionAndFinish(getString(R.string.action_delete)) { it.delete(emailId, emailFolder) }
         }
-        actionSpam.setOnClickListener {
-            runMailActionAndFinish(getString(R.string.action_spam)) { it.spam(emailId, emailFolder) }
+        actionJunk.setOnClickListener {
+            runMailActionAndFinish(getString(R.string.action_junk)) { it.spam(emailId, emailFolder) }
         }
         actionReply.setOnClickListener {
             openCompose(
