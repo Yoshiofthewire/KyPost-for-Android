@@ -26,179 +26,19 @@
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
 
-        <RadioGroup
-            android:id="@+id/connectionModeGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="8dp">
-
-            <RadioButton
-                android:id="@+id/radioManualImap"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/connection_mode_manual_imap" />
-
-            <RadioButton
-                android:id="@+id/radioRelay"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/connection_mode_relay" />
-
-        </RadioGroup>
-
         <TextView
             android:id="@+id/relayStatusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="13sp"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone" />
+            android:layout_marginBottom="8dp" />
 
         <Button
             android:id="@+id/btnPairDevice"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/connection_mode_pair_device"
-            android:layout_marginBottom="16dp"
-            android:visibility="gone" />
-
-        <LinearLayout
-            android:id="@+id/imapConfigSection"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/imapSettingsHeader"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/imap_settings"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/imap_host_label"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/editImapHost"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/imap_host_hint"
-                android:inputType="text"
-                android:layout_marginBottom="12dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/imap_port_label"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/editImapPort"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/imap_port_hint"
-                android:inputType="number"
-                android:layout_marginBottom="12dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/imap_folder_label"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/editImapFolder"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/imap_folder_hint"
-                android:inputType="text"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:id="@+id/smtpSettingsHeader"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/smtp_settings"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/smtp_host_label"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/editSmtpHost"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/smtp_host_hint"
-                android:inputType="text"
-                android:layout_marginBottom="12dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/smtp_port_label"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/editSmtpPort"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/smtp_port_hint"
-                android:inputType="number"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:id="@+id/authSettingsHeader"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/auth_settings"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/username_label"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/editUsername"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/username_hint"
-                android:inputType="text"
-                android:layout_marginBottom="12dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/password_label"
-                android:textSize="12sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/editPassword"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/password_hint"
-                android:inputType="textPassword"
-                android:layout_marginBottom="24dp" />
-
-        </LinearLayout>
+            android:layout_marginBottom="16dp" />
 
         <Button
             android:id="@+id/btnSaveSettings"

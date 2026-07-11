@@ -26,7 +26,7 @@ import java.util.Calendar
 // -----------------------------------------------------------------------------
 // App version shown on the About overlay. Bump this single value each release.
 // -----------------------------------------------------------------------------
-const val APP_VERSION = "8"
+const val APP_VERSION = "1"
 
 /** Shows the "About" overlay: app credit line plus a scrollable copy of the GPL v2. */
 fun showAboutDialog(activity: Activity) {

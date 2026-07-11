@@ -9,7 +9,6 @@
 
     <string name="settings_title">Email Settings</string>
     <string name="connection_mode_title">Connection Mode</string>
-    <string name="connection_mode_manual_imap">Manual IMAP/SMTP</string>
     <string name="connection_mode_relay">Relay (paired device)</string>
     <string name="connection_mode_pair_device">Pair this device</string>
     <string name="connection_mode_relay_paired">Paired — mail is relayed through your Llama Mail server.</string>
@@ -23,26 +22,6 @@
     <string name="about_version_badge">v%1$s</string>
     <string name="about_body">Developed by Busnes Games\n©%1$s - Licensed Under the GPL 2</string>
     <string name="about_license_label">GNU General Public License v2</string>
-
-    <string name="imap_settings">IMAP Settings</string>
-    <string name="imap_host_label">IMAP Host</string>
-    <string name="imap_host_hint">imap.example.com</string>
-    <string name="imap_port_label">IMAP Port</string>
-    <string name="imap_port_hint">993</string>
-    <string name="imap_folder_label">IMAP Folder (optional)</string>
-    <string name="imap_folder_hint">INBOX</string>
-
-    <string name="smtp_settings">SMTP Settings</string>
-    <string name="smtp_host_label">SMTP Host</string>
-    <string name="smtp_host_hint">smtp.example.com</string>
-    <string name="smtp_port_label">SMTP Port</string>
-    <string name="smtp_port_hint">587</string>
-
-    <string name="auth_settings">Authentication</string>
-    <string name="username_label">Username</string>
-    <string name="username_hint">your@email.com</string>
-    <string name="password_label">Password</string>
-    <string name="password_hint">Your password or app-specific password</string>
 
     <string name="save_settings">Save Settings</string>
 

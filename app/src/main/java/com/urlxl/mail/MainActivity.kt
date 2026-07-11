@@ -25,8 +25,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        val mailSettings = MailSettings(this)
-
         lifecycleScope.launch {
             intent.extras?.let { extras ->
                 MfaChallengePayloadParser.parse(extras)?.let { mfa ->
@@ -38,14 +36,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Manual IMAP mode is "configured" once host/user/pass are filled in; Relay mode is
-            // "configured" once the device is paired — checking isConfigured() alone here would
-            // trap a paired, relay-only user in a loop back to Settings since they never fill IMAP
-            // fields.
-            val configured = when (mailSettings.getConnectionMode()) {
-                MailConnectionMode.RELAY -> PushRuntime.graph(this@MainActivity).repository.state.first().pairing != null
-                MailConnectionMode.MANUAL_IMAP -> mailSettings.isConfigured()
-            }
+            val configured = PushRuntime.graph(this@MainActivity).repository.state.first().pairing != null
 
             val targetIntent = if (configured) {
                 Intent(this@MainActivity, InboxActivity::class.java).apply {

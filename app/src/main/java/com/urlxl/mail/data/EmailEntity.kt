@@ -4,9 +4,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * Local cache row for one message, populated by either [com.urlxl.mail.mail.ImapMailSource] or
- * [com.urlxl.mail.mail.RelayMailSource]. This is the UI's read model regardless of which source
- * is active — Relay mode reconciles delta responses into it (new/updated/removed,
+ * Local cache row for one message, populated by [com.urlxl.mail.mail.RelayMailSource].
+ * This is the UI's read model — relay reconciles delta responses into it (new/updated/removed,
  * Mobile_Mail_Relay.md Part 5) rather than re-fetching everything on each screen visit.
  */
 @Entity(tableName = "emails")

@@ -62,9 +62,8 @@ data class MailSendOutcome(val sentSaved: Boolean, val warning: String)
 data class MailMessageBody(val html: String, val toAddresses: List<String>, val ccAddresses: List<String>)
 
 /**
- * Blocking (non-suspend) by design: callers already run on a background executor thread
- * (mirroring [com.urlxl.mail.MailGateway]'s own synchronous style), so there is no need to
- * introduce coroutines into the mail path just for this abstraction.
+ * Blocking (non-suspend) by design: callers already run on a background executor thread,
+ * so there is no need to introduce coroutines into the mail path just for this abstraction.
  */
 interface MailSource {
     /** [forceFullResync] requests since=0 (full re-fetch reported in delta shape) regardless of

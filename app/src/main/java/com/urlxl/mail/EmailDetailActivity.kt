@@ -87,10 +87,9 @@ class EmailDetailActivity : AppCompatActivity() {
             )
         }
         actionReplyAll.setOnClickListener {
-            val myAddress = MailSettings(this).getUsername()
             val recipients = (listOf(extractAddress(emailSender)) + toRecipients.map(::extractAddress) + ccRecipients.map(::extractAddress))
                 .distinct()
-                .filter { it.isNotBlank() && !it.equals(myAddress, ignoreCase = true) }
+                .filter { it.isNotBlank() }
             openCompose(
                 to = recipients.joinToString(", "),
                 subject = withPrefix(emailSubject, "Re:"),

@@ -6,9 +6,8 @@ import androidx.room.Transaction
 import androidx.room.Upsert
 
 /**
- * Blocking (non-suspend) by design: callers already run on a background executor thread
- * (mirroring [com.urlxl.mail.MailGateway]'s synchronous style), so there is no need to add
- * coroutines to the mail path just for this cache.
+ * Blocking (non-suspend) by design: callers already run on a background executor thread,
+ * so there is no need to add coroutines to the mail path just for this cache.
  */
 @Dao
 interface EmailDao {
