@@ -82,8 +82,10 @@ class ContactsListActivity : AppCompatActivity() {
                         render(contacts)
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("ContactsListActivity", "Error observing contacts", e)
-                    Toast.makeText(this@ContactsListActivity, "Error loading contacts", Toast.LENGTH_SHORT).show()
+                    if (e !is kotlinx.coroutines.CancellationException) {
+                        android.util.Log.e("ContactsListActivity", "Error observing contacts", e)
+                        Toast.makeText(this@ContactsListActivity, "Error loading contacts", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
