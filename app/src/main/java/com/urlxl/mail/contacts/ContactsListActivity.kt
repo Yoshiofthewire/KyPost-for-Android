@@ -84,26 +84,28 @@ class ContactsListActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        android.util.Log.d("DeviceContactSync", "ContactsListActivity.onStart()")
         try {
-            val deviceGraph = DeviceContactsRuntime.graph(this)
-            deviceGraph.observer.register()
             ContactsRuntime.graph(this).coordinator.syncNowAsync()
-            deviceGraph.coordinator.syncNowAsync()
-            android.util.Log.d("DeviceContactSync", "Contacts activity started successfully")
+
+            // TEMP: Device sync disabled for debugging
+            if (false) {
+                val deviceGraph = DeviceContactsRuntime.graph(this)
+                deviceGraph.observer.register()
+                deviceGraph.coordinator.syncNowAsync()
+            }
         } catch (e: Exception) {
-            android.util.Log.e("DeviceContactSync", "Error in onStart()", e)
             Toast.makeText(this, "Error syncing contacts: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
     override fun onStop() {
         super.onStop()
-        android.util.Log.d("DeviceContactSync", "ContactsListActivity.onStop()")
         try {
-            DeviceContactsRuntime.graph(this).observer.unregister()
+            if (false) {
+                DeviceContactsRuntime.graph(this).observer.unregister()
+            }
         } catch (e: Exception) {
-            android.util.Log.e("DeviceContactSync", "Error in onStop()", e)
+            // Silently ignore
         }
     }
 
