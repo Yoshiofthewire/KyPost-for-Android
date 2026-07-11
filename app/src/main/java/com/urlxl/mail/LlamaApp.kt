@@ -19,14 +19,30 @@ class LlamaApp : Application(), DefaultLifecycleObserver {
     override fun onCreate() {
         super<Application>.onCreate()
         PushNotificationDispatcher.ensureChannel(this)
-        DeviceContactsRuntime.graph(this).bootstrapIfEnabled()
+        try {
+            DeviceContactsRuntime.graph(this).bootstrapIfEnabled()
+        } catch (e: Exception) {
+            android.util.Log.e("LlamaApp", "Failed to bootstrap device contacts", e)
+        }
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
 
     override fun onStart(owner: LifecycleOwner) {
         // App moved to the foreground.
-        PushRuntime.graph(this).pullCoordinator.pullNowAsync()
-        ContactsRuntime.graph(this).coordinator.syncNowAsync()
-        DeviceContactsRuntime.graph(this).coordinator.syncNowAsync()
+        try {
+            PushRuntime.graph(this).pullCoordinator.pullNowAsync()
+        } catch (e: Exception) {
+            android.util.Log.e("LlamaApp", "Failed to pull", e)
+        }
+        try {
+            ContactsRuntime.graph(this).coordinator.syncNowAsync()
+        } catch (e: Exception) {
+            android.util.Log.e("LlamaApp", "Failed to sync contacts (relay)", e)
+        }
+        try {
+            DeviceContactsRuntime.graph(this).coordinator.syncNowAsync()
+        } catch (e: Exception) {
+            android.util.Log.e("LlamaApp", "Failed to sync contacts (device)", e)
+        }
     }
 }

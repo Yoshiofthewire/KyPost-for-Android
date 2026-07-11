@@ -50,18 +50,28 @@ class ContactsListActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        android.util.Log.d("ContactsListActivity", "onCreate() called")
+        android.util.Log.d("ContactsListActivity", "onCreate() START")
         super.onCreate(savedInstanceState)
+        android.util.Log.d("ContactsListActivity", "super.onCreate() done")
         try {
+            android.util.Log.d("ContactsListActivity", "setContentView...")
             setContentView(R.layout.activity_contacts_list)
+            android.util.Log.d("ContactsListActivity", "setContentView OK")
+
+            android.util.Log.d("ContactsListActivity", "applyTheme...")
             applyThemeToActivity(this)
+            android.util.Log.d("ContactsListActivity", "applyTheme OK")
+
             applyThemedTitle(this, getString(R.string.contacts_title))
             applyTopInsetWithHeader(this, findViewById(R.id.contactsRoot))
 
+            android.util.Log.d("ContactsListActivity", "findViewById...")
             recyclerView = findViewById(R.id.recyclerViewContacts)
             emptyText = findViewById(R.id.contactsEmptyText)
             val addButton = findViewById<FloatingActionButton>(R.id.btnAddContact)
+            android.util.Log.d("ContactsListActivity", "findViewById OK")
 
+            android.util.Log.d("ContactsListActivity", "adapter...")
             adapter = ContactAdapter { contact ->
                 startActivity(
                     Intent(this, ContactEditActivity::class.java)
@@ -70,13 +80,14 @@ class ContactsListActivity : AppCompatActivity() {
             }
             recyclerView.layoutManager = LinearLayoutManager(this)
             recyclerView.adapter = adapter
+            android.util.Log.d("ContactsListActivity", "adapter OK")
 
             addButton.setOnClickListener {
                 startActivity(Intent(this, ContactEditActivity::class.java))
             }
+            android.util.Log.d("ContactsListActivity", "onCreate() COMPLETE")
         } catch (e: Exception) {
-            android.util.Log.e("ContactsListActivity", "onCreate failed", e)
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            android.util.Log.e("ContactsListActivity", "onCreate crashed", e)
             finish()
             return
         }
@@ -130,10 +141,15 @@ class ContactsListActivity : AppCompatActivity() {
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
         val deviceSyncItem = menu?.findItem(MENU_DEVICE_SYNC)
         if (deviceSyncItem != null) {
-            val isEnabled = DeviceContactsRuntime.graph(this).settings.isEnabled()
-            deviceSyncItem.title = getString(
-                if (isEnabled) R.string.contacts_device_sync_disable else R.string.contacts_device_sync_enable,
-            )
+            try {
+                val isEnabled = DeviceContactsRuntime.graph(this).settings.isEnabled()
+                deviceSyncItem.title = getString(
+                    if (isEnabled) R.string.contacts_device_sync_disable else R.string.contacts_device_sync_enable,
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("ContactsListActivity", "Error getting device sync status", e)
+                deviceSyncItem.title = getString(R.string.contacts_device_sync_enable)
+            }
         }
         return super.onPrepareOptionsMenu(menu)
     }
