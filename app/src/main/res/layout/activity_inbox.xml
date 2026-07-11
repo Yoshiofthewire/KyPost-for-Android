@@ -75,7 +75,7 @@
             app:labelVisibilityMode="labeled"
             app:itemTextAppearanceActive="@style/TextAppearance.Llama.BottomNavLabel"
             app:itemTextAppearanceInactive="@style/TextAppearance.Llama.BottomNavLabel"
-            app:itemPaddingTop="0dp"
+            app:itemPaddingTop="12dp"
             app:itemPaddingBottom="20dp"
             app:menu="@menu/bottom_nav_menu" />
 
