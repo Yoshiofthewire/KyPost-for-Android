@@ -70,8 +70,13 @@ class ContactsListActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                ContactsRuntime.graph(this@ContactsListActivity).repository.observeContacts().collect { contacts ->
-                    render(contacts)
+                try {
+                    ContactsRuntime.graph(this@ContactsListActivity).repository.observeContacts().collect { contacts ->
+                        render(contacts)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("DeviceContactSync", "Error observing contacts", e)
+                    Toast.makeText(this@ContactsListActivity, "Error loading contacts", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -79,15 +84,27 @@ class ContactsListActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        val deviceGraph = DeviceContactsRuntime.graph(this)
-        deviceGraph.observer.register()
-        ContactsRuntime.graph(this).coordinator.syncNowAsync()
-        deviceGraph.coordinator.syncNowAsync()
+        android.util.Log.d("DeviceContactSync", "ContactsListActivity.onStart()")
+        try {
+            val deviceGraph = DeviceContactsRuntime.graph(this)
+            deviceGraph.observer.register()
+            ContactsRuntime.graph(this).coordinator.syncNowAsync()
+            deviceGraph.coordinator.syncNowAsync()
+            android.util.Log.d("DeviceContactSync", "Contacts activity started successfully")
+        } catch (e: Exception) {
+            android.util.Log.e("DeviceContactSync", "Error in onStart()", e)
+            Toast.makeText(this, "Error syncing contacts: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onStop() {
         super.onStop()
-        DeviceContactsRuntime.graph(this).observer.unregister()
+        android.util.Log.d("DeviceContactSync", "ContactsListActivity.onStop()")
+        try {
+            DeviceContactsRuntime.graph(this).observer.unregister()
+        } catch (e: Exception) {
+            android.util.Log.e("DeviceContactSync", "Error in onStop()", e)
+        }
     }
 
     override fun onResume() {
