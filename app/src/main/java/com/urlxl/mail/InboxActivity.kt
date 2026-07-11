@@ -97,6 +97,7 @@ class InboxActivity : AppCompatActivity() {
         supportActionBar?.setDisplayShowTitleEnabled(false)
         applyFolderTitle()
         applyTopInsetWithHeader(this, inboxContent)
+        applyTopInsetWithHeader(this, headerFolderTitle)
         applyBottomInset(bottomNav)
         applyInboxThemeChrome()
         setupRecyclerView()
@@ -486,6 +487,7 @@ class InboxActivity : AppCompatActivity() {
                 selectedTab = KeywordTabs.ALL
                 applyFolderTitle()
                 refreshInbox()
+                bottomNav.selectedItemId = R.id.nav_inbox
                 true
             }
             popupMenu.show()
@@ -511,6 +513,14 @@ class InboxActivity : AppCompatActivity() {
                     true
                 }
                 else -> false
+            }
+        }
+        bottomNav.setOnItemReselectedListener { item ->
+            if (item.itemId == R.id.nav_inbox) {
+                currentFolder = "INBOX"
+                selectedTab = KeywordTabs.ALL
+                applyFolderTitle()
+                refreshInbox()
             }
         }
         bottomNav.selectedItemId = R.id.nav_inbox

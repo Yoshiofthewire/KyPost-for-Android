@@ -22,7 +22,9 @@
             android:textStyle="bold"
             android:clickable="true"
             android:focusable="true"
-            android:background="?attr/selectableItemBackground" />
+            android:background="?attr/selectableItemBackground"
+            android:drawableEnd="@drawable/ic_arrow_drop_down"
+            android:drawablePadding="8dp" />
 
         <LinearLayout
             android:id="@+id/inboxContent"

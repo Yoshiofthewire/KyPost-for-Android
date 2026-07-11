@@ -26,6 +26,7 @@
 
     <string name="nav_inbox">Inbox</string>
     <string name="nav_compose">Compose</string>
+    <string name="nav_contacts">Contacts</string>
     <string name="nav_junk">Junk</string>
     <string name="nav_trash">Trash</string>
 
