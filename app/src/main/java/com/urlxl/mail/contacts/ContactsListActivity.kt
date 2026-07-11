@@ -44,69 +44,69 @@ class ContactsListActivity : AppCompatActivity() {
         enableDeviceSyncAfterPermissionGrant()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        android.util.Log.d("ContactsListActivity", "onDestroy()")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        android.util.Log.d("ContactsListActivity", "onCreate() called")
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_contacts_list)
-        applyThemeToActivity(this)
-        applyThemedTitle(this, getString(R.string.contacts_title))
-        applyTopInsetWithHeader(this, findViewById(R.id.contactsRoot))
+        try {
+            setContentView(R.layout.activity_contacts_list)
+            applyThemeToActivity(this)
+            applyThemedTitle(this, getString(R.string.contacts_title))
+            applyTopInsetWithHeader(this, findViewById(R.id.contactsRoot))
 
-        recyclerView = findViewById(R.id.recyclerViewContacts)
-        emptyText = findViewById(R.id.contactsEmptyText)
-        val addButton = findViewById<FloatingActionButton>(R.id.btnAddContact)
+            recyclerView = findViewById(R.id.recyclerViewContacts)
+            emptyText = findViewById(R.id.contactsEmptyText)
+            val addButton = findViewById<FloatingActionButton>(R.id.btnAddContact)
 
-        adapter = ContactAdapter { contact ->
-            startActivity(
-                Intent(this, ContactEditActivity::class.java)
-                    .putExtra(ContactEditActivity.EXTRA_UID, contact.uid),
-            )
+            adapter = ContactAdapter { contact ->
+                startActivity(
+                    Intent(this, ContactEditActivity::class.java)
+                        .putExtra(ContactEditActivity.EXTRA_UID, contact.uid),
+                )
+            }
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            recyclerView.adapter = adapter
+
+            addButton.setOnClickListener {
+                startActivity(Intent(this, ContactEditActivity::class.java))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ContactsListActivity", "onCreate failed", e)
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            finish()
+            return
         }
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = adapter
 
-        addButton.setOnClickListener {
-            startActivity(Intent(this, ContactEditActivity::class.java))
-        }
-
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                try {
-                    ContactsRuntime.graph(this@ContactsListActivity).repository.observeContacts().collect { contacts ->
-                        render(contacts)
+        // TEMP: Disabled flow collection for debugging
+        if (false) {
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    try {
+                        ContactsRuntime.graph(this@ContactsListActivity).repository.observeContacts().collect { contacts ->
+                            render(contacts)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("DeviceContactSync", "Error observing contacts", e)
+                        Toast.makeText(this@ContactsListActivity, "Error loading contacts", Toast.LENGTH_SHORT).show()
                     }
-                } catch (e: Exception) {
-                    android.util.Log.e("DeviceContactSync", "Error observing contacts", e)
-                    Toast.makeText(this@ContactsListActivity, "Error loading contacts", Toast.LENGTH_SHORT).show()
                 }
             }
         }
+        render(emptyList())
     }
 
     override fun onStart() {
         super.onStart()
-        try {
-            ContactsRuntime.graph(this).coordinator.syncNowAsync()
-
-            // TEMP: Device sync disabled for debugging
-            if (false) {
-                val deviceGraph = DeviceContactsRuntime.graph(this)
-                deviceGraph.observer.register()
-                deviceGraph.coordinator.syncNowAsync()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error syncing contacts: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
+        // No syncs while debugging - just render empty list
     }
 
     override fun onStop() {
         super.onStop()
-        try {
-            if (false) {
-                DeviceContactsRuntime.graph(this).observer.unregister()
-            }
-        } catch (e: Exception) {
-            // Silently ignore
-        }
+        // Cleanup if needed
     }
 
     override fun onResume() {
