@@ -93,12 +93,18 @@ class ContactsListActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        // No syncs while debugging - just render empty list
+        // Observer only lives while the Contacts UI is visible — registering it globally caused
+        // sync feedback loops. syncNowAsync() no-ops internally when device sync is disabled.
+        val graph = DeviceContactsRuntime.graph(this)
+        if (graph.settings.isEnabled()) {
+            graph.observer.register()
+            graph.coordinator.syncNowAsync()
+        }
     }
 
     override fun onStop() {
         super.onStop()
-        // Cleanup if needed
+        DeviceContactsRuntime.graph(this).observer.unregister()
     }
 
     override fun onResume() {
