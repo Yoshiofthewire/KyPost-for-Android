@@ -343,8 +343,7 @@ class InboxActivity : AppCompatActivity() {
                 }
             }
             val outcome: MailOutcome<MailFetchResult> = mailRepository.refreshFolder(currentFolder)
-            val emails = (outcome as? MailOutcome.Success)?.value?.messages
-                ?: mailRepository.cachedEmails(currentFolder)
+            val emails = mailRepository.cachedEmails(currentFolder)
             val errorMessage = outcome.userFacingMessage()
             keywordSettings.rememberKeywords(emails.flatMap { it.keywords }.toSet())
             runOnUiThread {
