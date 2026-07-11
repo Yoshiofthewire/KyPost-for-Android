@@ -79,8 +79,15 @@ class ContactsListActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+        val deviceGraph = DeviceContactsRuntime.graph(this)
+        deviceGraph.observer.register()
         ContactsRuntime.graph(this).coordinator.syncNowAsync()
-        DeviceContactsRuntime.graph(this).coordinator.syncNowAsync()
+        deviceGraph.coordinator.syncNowAsync()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        DeviceContactsRuntime.graph(this).observer.unregister()
     }
 
     override fun onResume() {

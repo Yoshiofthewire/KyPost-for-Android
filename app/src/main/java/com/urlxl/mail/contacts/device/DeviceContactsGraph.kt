@@ -19,7 +19,6 @@ class DeviceContactsGraph(context: Context) {
 
     fun bootstrapIfEnabled() {
         if (!settings.isEnabled()) return
-        observer.register()
         DeviceContactSyncScheduler.ensurePeriodic(appContext)
     }
 }

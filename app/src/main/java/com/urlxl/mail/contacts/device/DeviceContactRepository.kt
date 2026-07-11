@@ -21,9 +21,21 @@ class DeviceContactRepository(
     private val contentResolver = context.contentResolver
 
     suspend fun syncAll() {
-        pullDeviceChangesForOwnAccount()
-        importNewDeviceContacts()
-        pushRoomChangesToDevice()
+        try {
+            pullDeviceChangesForOwnAccount()
+        } catch (e: Exception) {
+            android.util.Log.e("DeviceContactSync", "Error pulling device changes", e)
+        }
+        try {
+            importNewDeviceContacts()
+        } catch (e: Exception) {
+            android.util.Log.e("DeviceContactSync", "Error importing device contacts", e)
+        }
+        try {
+            pushRoomChangesToDevice()
+        } catch (e: Exception) {
+            android.util.Log.e("DeviceContactSync", "Error pushing to device", e)
+        }
     }
 
     private suspend fun pullDeviceChangesForOwnAccount() = withContext(Dispatchers.IO) {
