@@ -144,6 +144,15 @@ class DeviceContactRepository(
         }
     }
 
+    private fun isSystemContact(snapshot: DeviceRawContactSnapshot): Boolean {
+        val name = snapshot.fn.lowercase()
+        return (name.contains("customer care") || name.contains("customer service") ||
+            name.contains("411") || name.contains("611") ||
+            name.contains("voicemail") || name.contains("support") ||
+            name.contains("carrier") || name.contains("emergency") ||
+            name.startsWith("*") || name.startsWith("#"))
+    }
+
     private suspend fun clearDirtyFlag(rawContactId: Long) = withContext(Dispatchers.IO) {
         val uri = ContactsContract.RawContacts.CONTENT_URI.buildUpon()
             .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
@@ -202,6 +211,8 @@ class DeviceContactRepository(
         for (rawContactId in rawContactCandidates) {
             val candidate = readRawContactSnapshot(rawContactId)
             if (candidate == null) continue
+
+            if (isSystemContact(candidate)) continue
 
             val candidateEmails = candidate.emails.map { it.value }
             val candidatePhones = candidate.phones.map { it.value }
