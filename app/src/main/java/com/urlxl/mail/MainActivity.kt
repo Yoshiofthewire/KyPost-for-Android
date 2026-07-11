@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } else {
-                Intent(this@MainActivity, SettingsActivity::class.java)
+                Intent(this@MainActivity, com.urlxl.mail.push.PushPairingActivity::class.java)
             }
             startActivity(targetIntent)
             finish()

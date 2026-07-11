@@ -431,10 +431,9 @@ class InboxActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menu?.add(0, MENU_KEYWORDS, 0, R.string.menu_keywords)
         menu?.add(0, MENU_CONTACTS, 1, R.string.menu_contacts)
-        menu?.add(0, MENU_SETTINGS, 2, R.string.menu_settings)
-        menu?.add(0, MENU_THEMES, 3, R.string.menu_themes)
-        menu?.add(0, MENU_PUSH_PAIRING, 4, R.string.menu_push_pairing)
-        menu?.add(0, MENU_ABOUT, 5, R.string.menu_about)
+        menu?.add(0, MENU_THEMES, 2, R.string.menu_themes)
+        menu?.add(0, MENU_PUSH_PAIRING, 3, R.string.menu_pairing)
+        menu?.add(0, MENU_ABOUT, 4, R.string.menu_about)
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -446,10 +445,6 @@ class InboxActivity : AppCompatActivity() {
             }
             MENU_CONTACTS -> {
                 startActivity(Intent(this, com.urlxl.mail.contacts.ContactsListActivity::class.java))
-                true
-            }
-            MENU_SETTINGS -> {
-                startActivity(Intent(this, SettingsActivity::class.java))
                 true
             }
             MENU_THEMES -> {
@@ -609,10 +604,9 @@ class InboxActivity : AppCompatActivity() {
         private const val PENDING_MESSAGE_TIMEOUT_MS = 30_000L
         private const val MENU_KEYWORDS = 0
         private const val MENU_CONTACTS = 1
-        private const val MENU_SETTINGS = 2
-        private const val MENU_THEMES = 3
-        private const val MENU_PUSH_PAIRING = 4
-        private const val MENU_ABOUT = 5
+        private const val MENU_THEMES = 2
+        private const val MENU_PUSH_PAIRING = 3
+        private const val MENU_ABOUT = 4
         private val SWIPE_ARCHIVE_COLOR = Color.parseColor(COLOR_WARNING)
         private val SWIPE_DELETE_COLOR = Color.parseColor(COLOR_DANGER)
     }
