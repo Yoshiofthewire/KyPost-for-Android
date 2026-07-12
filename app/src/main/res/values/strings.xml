@@ -53,6 +53,12 @@
     <string name="compose_subject">Subject</string>
     <string name="compose_body_hint">Type your message here...</string>
     <string name="compose_send">Send</string>
+    <string name="compose_attach">📎 Attach</string>
+    <string name="compose_attachments_too_large">Attachments too large (max 25 MB total)</string>
+    <string name="email_attachments">Attachments</string>
+    <string name="attachment_downloading">Downloading %1$s…</string>
+    <string name="attachment_saved">Saved %1$s to Downloads</string>
+    <string name="attachment_save_failed">Couldn\'t save %1$s</string>
     <string name="cancel">Cancel</string>
     <string name="compose_format_bold">B</string>
     <string name="compose_format_italic">I</string>
