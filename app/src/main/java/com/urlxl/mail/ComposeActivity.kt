@@ -1,5 +1,6 @@
 package com.urlxl.mail
 
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -132,6 +133,9 @@ class ComposeActivity : AppCompatActivity() {
         listOf(boldChip, italicChip, underlineChip, bulletChip, numberChip, linkChip).forEach {
             applyPillChipTheme(this, it)
         }
+        // The Attach button is borderless, so nothing tints its label to the active palette the way
+        // the pills tint themselves — set it explicitly or it renders as unreadable default-dark text.
+        attachButton.setTextColor(Color.parseColor(getStoredThemePalette(this).inkStrong))
     }
 
     /** Injects the active palette into the editor's WebView content so it doesn't render as a
