@@ -46,6 +46,35 @@ class PushSyncCoordinator(
         return syncAndPersist(pairing = pairing, token = token, transport = transport, p256dh = p256dh, auth = auth)
     }
 
+    /**
+     * Resyncs using whichever transport is currently confirmed active, instead of always
+     * assuming FCM: if the last successful registration was unifiedpush, resends the stored
+     * endpoint + WebPush keys (there's no way to re-fetch these from the connector on demand,
+     * they only arrive via onNewEndpoint), otherwise falls back to [syncCurrentPairingToken].
+     * Used by user/app-initiated resyncs (e.g. "resync token", app-open) — NOT by flows that
+     * explicitly want to force FCM (switching away from UnifiedPush), which should keep calling
+     * [syncCurrentPairingToken] directly.
+     */
+    suspend fun resyncActiveTransport(): NativeRegistrationResult {
+        val state = repository.state.first()
+        val endpoint = state.unifiedPushEndpoint
+        // unifiedPushEndpoint is only ever set (see syncAndPersist) when we last successfully
+        // registered with transport="unifiedpush", and cleared on any other successful sync —
+        // it's a reliable local signal independent of whether the server echoes transport back.
+        return if (endpoint != null) {
+            val pairing = state.pairing ?: return NativeRegistrationResult.Error("Device is not paired")
+            syncAndPersist(
+                pairing = pairing,
+                token = endpoint,
+                transport = "unifiedpush",
+                p256dh = state.unifiedPushP256dh,
+                auth = state.unifiedPushAuth,
+            )
+        } else {
+            syncCurrentPairingToken()
+        }
+    }
+
     private suspend fun syncAndPersist(
         pairing: PairingData,
         token: String,
@@ -65,6 +94,14 @@ class PushSyncCoordinator(
                 repository.savePairing(pairing.copy(deviceId = result.deviceId ?: pairing.deviceId))
                 persistDelivery(pairing, result)
                 repository.updateTransport(result.transport)
+                // Gate on the transport we requested, not result.transport: older servers may
+                // not echo transport back (it's null in that case), which would otherwise wipe
+                // the endpoint/keys we just successfully registered right after setting them.
+                if (transport == "unifiedpush") {
+                    repository.updateUnifiedPushRegistration(endpoint = token, p256dh = p256dh, auth = auth)
+                } else {
+                    repository.updateUnifiedPushRegistration(endpoint = null, p256dh = null, auth = null)
+                }
                 repository.updateSyncState(lastSyncAtEpochMs = result.syncedAtEpochMs, syncError = null)
             }
             is NativeRegistrationResult.Error -> repository.updateSyncState(lastSyncAtEpochMs = null, syncError = result.message)

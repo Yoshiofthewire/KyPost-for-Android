@@ -53,7 +53,7 @@ class PushHomeViewModel(application: Application) : AndroidViewModel(application
                 // the user, even though delivery is already configured and working. Only retry here
                 // to recover a pairing whose initial sync never completed.
                 if (state.lastTokenSyncAtEpochMs == null) {
-                    graph.syncCoordinator.syncCurrentPairingToken()
+                    graph.syncCoordinator.resyncActiveTransport()
                 }
                 // Re-read delivery mode & drain any queued pull notifications on open.
                 graph.pullCoordinator.pullNowAsync()
@@ -151,7 +151,7 @@ class PushHomeViewModel(application: Application) : AndroidViewModel(application
     fun resyncToken() {
         scope.launch {
             isWorking.value = true
-            val result = graph.syncCoordinator.syncCurrentPairingToken()
+            val result = graph.syncCoordinator.resyncActiveTransport()
             if (result is NativeRegistrationResult.Success) {
                 graph.pullCoordinator.pullNowAsync()
             }

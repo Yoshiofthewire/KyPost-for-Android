@@ -26,6 +26,9 @@ private val KEY_PULL_ENDPOINT = stringPreferencesKey("pull_endpoint")
 private val KEY_PULL_CURSOR = longPreferencesKey("pull_cursor")
 private val KEY_PULL_CURSOR_SUB = stringPreferencesKey("pull_cursor_sub")
 private val KEY_TRANSPORT = stringPreferencesKey("transport")
+private val KEY_UNIFIEDPUSH_ENDPOINT = stringPreferencesKey("unifiedpush_endpoint")
+private val KEY_UNIFIEDPUSH_P256DH = stringPreferencesKey("unifiedpush_p256dh")
+private val KEY_UNIFIEDPUSH_AUTH = stringPreferencesKey("unifiedpush_auth")
 
 private const val HISTORY_LIMIT = 30
 
@@ -62,6 +65,9 @@ class PushRepository(private val context: Context) {
             prefs.remove(KEY_PULL_CURSOR)
             prefs.remove(KEY_PULL_CURSOR_SUB)
             prefs.remove(KEY_TRANSPORT)
+            prefs.remove(KEY_UNIFIEDPUSH_ENDPOINT)
+            prefs.remove(KEY_UNIFIEDPUSH_P256DH)
+            prefs.remove(KEY_UNIFIEDPUSH_AUTH)
         }
     }
 
@@ -77,6 +83,22 @@ class PushRepository(private val context: Context) {
     suspend fun updateTransport(transport: String?) {
         context.pushDataStore.edit { prefs ->
             if (transport.isNullOrBlank()) prefs.remove(KEY_TRANSPORT) else prefs[KEY_TRANSPORT] = transport
+        }
+    }
+
+    /**
+     * Persist the UnifiedPush endpoint + WebPush encryption keys from the last successful
+     * unifiedpush registration, so a later resync (e.g. the user tapping "resync", or the
+     * app re-syncing on open) can resend the same endpoint/keys instead of falling back to
+     * an FCM token — there is no synchronous way to re-fetch these from the UnifiedPush
+     * connector, they only ever arrive via the onNewEndpoint callback. Pass all-null to clear
+     * (e.g. when the confirmed transport is no longer unifiedpush).
+     */
+    suspend fun updateUnifiedPushRegistration(endpoint: String?, p256dh: String?, auth: String?) {
+        context.pushDataStore.edit { prefs ->
+            if (endpoint.isNullOrBlank()) prefs.remove(KEY_UNIFIEDPUSH_ENDPOINT) else prefs[KEY_UNIFIEDPUSH_ENDPOINT] = endpoint
+            if (p256dh.isNullOrBlank()) prefs.remove(KEY_UNIFIEDPUSH_P256DH) else prefs[KEY_UNIFIEDPUSH_P256DH] = p256dh
+            if (auth.isNullOrBlank()) prefs.remove(KEY_UNIFIEDPUSH_AUTH) else prefs[KEY_UNIFIEDPUSH_AUTH] = auth
         }
     }
 
@@ -122,6 +144,9 @@ class PushRepository(private val context: Context) {
             deliveryMode = DeliveryMode.fromWire(prefs[KEY_DELIVERY_MODE]),
             pullEndpoint = pullEndpoint,
             transport = prefs[KEY_TRANSPORT],
+            unifiedPushEndpoint = prefs[KEY_UNIFIEDPUSH_ENDPOINT],
+            unifiedPushP256dh = prefs[KEY_UNIFIEDPUSH_P256DH],
+            unifiedPushAuth = prefs[KEY_UNIFIEDPUSH_AUTH],
         )
     }
 
@@ -140,4 +165,7 @@ data class PushState(
     val deliveryMode: DeliveryMode = DeliveryMode.PUSH,
     val pullEndpoint: String? = null,
     val transport: String? = null,
+    val unifiedPushEndpoint: String? = null,
+    val unifiedPushP256dh: String? = null,
+    val unifiedPushAuth: String? = null,
 )
