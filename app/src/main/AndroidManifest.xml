@@ -64,6 +64,14 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".pgp.MyQrCodeActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".pgp.ScanAddContactKeyActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".push.PushPairingActivity"
             android:exported="true"
             android:launchMode="singleTop">

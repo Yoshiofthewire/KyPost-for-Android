@@ -33,6 +33,7 @@ class ContactsListActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: View
     private lateinit var adapter: ContactAdapter
+    private var pickMode: Boolean = false
     private val contactPermissionLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
@@ -48,9 +49,10 @@ class ContactsListActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
+            pickMode = intent.getBooleanExtra(EXTRA_PICK_MODE, false)
             setContentView(R.layout.activity_contacts_list)
             applyThemeToActivity(this)
-            applyThemedTitle(this, getString(R.string.contacts_title))
+            applyThemedTitle(this, getString(if (pickMode) R.string.contacts_pick_title else R.string.contacts_title))
             applyTopInsetWithHeader(this, findViewById(R.id.contactsRoot))
 
             recyclerView = findViewById(R.id.recyclerViewContacts)
@@ -58,16 +60,27 @@ class ContactsListActivity : AppCompatActivity() {
             val addButton = findViewById<FloatingActionButton>(R.id.btnAddContact)
 
             adapter = ContactAdapter { contact ->
-                startActivity(
-                    Intent(this, ContactEditActivity::class.java)
-                        .putExtra(ContactEditActivity.EXTRA_UID, contact.uid),
-                )
+                if (pickMode) {
+                    setResult(RESULT_OK, Intent().putExtra(EXTRA_RESULT_UID, contact.uid))
+                    finish()
+                } else {
+                    startActivity(
+                        Intent(this, ContactEditActivity::class.java)
+                            .putExtra(ContactEditActivity.EXTRA_UID, contact.uid),
+                    )
+                }
             }
             recyclerView.layoutManager = LinearLayoutManager(this)
             recyclerView.adapter = adapter
 
-            addButton.setOnClickListener {
-                startActivity(Intent(this, ContactEditActivity::class.java))
+            // No "create new contact" branch in pick mode — the user backs out and uses the
+            // normal add-contact flow, then re-invokes the picker.
+            if (pickMode) {
+                addButton.visibility = View.GONE
+            } else {
+                addButton.setOnClickListener {
+                    startActivity(Intent(this, ContactEditActivity::class.java))
+                }
             }
         } catch (e: Exception) {
             android.util.Log.e("ContactsListActivity", "onCreate crashed", e)
@@ -120,6 +133,9 @@ class ContactsListActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        // Pick mode is a lightweight contact-selection surface for other flows (e.g. PGP QR key
+        // exchange) — no dedupe/refresh/device-sync affordances there, just pick-or-back-out.
+        if (pickMode) return false
         menu?.add(0, MENU_REFRESH, 0, R.string.contacts_refresh)
         menu?.add(0, MENU_DEVICE_SYNC, 0, R.string.contacts_device_sync_enable)
         menu?.add(0, MENU_DEDUPE, 0, R.string.contacts_dedupe)
@@ -268,5 +284,11 @@ class ContactsListActivity : AppCompatActivity() {
         private const val MENU_REFRESH = 0
         private const val MENU_DEVICE_SYNC = 1
         private const val MENU_DEDUPE = 2
+
+        /** When set true on launch, tapping a contact returns its uid via [EXTRA_RESULT_UID]
+         *  instead of opening [ContactEditActivity] — used by flows (e.g. PGP QR key exchange)
+         *  that need the caller to pick an existing contact. */
+        const val EXTRA_PICK_MODE = "pick_mode"
+        const val EXTRA_RESULT_UID = "result_uid"
     }
 }

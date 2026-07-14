@@ -1,0 +1,255 @@
+package com.urlxl.mail.pgp
+
+import kotlinx.coroutines.runBlocking
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.Timeout
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.IOException
+
+/** Fakes OkHttp's [Call.Factory]; mirrors ContactSyncClientTest's hand-rolled-fake style (no
+ *  mocking framework, no MockWebServer dependency in this repo). */
+private class FakeCallFactory(private val responder: (Request) -> Response) : Call.Factory {
+    val requests = mutableListOf<Request>()
+
+    override fun newCall(request: Request): Call {
+        requests.add(request)
+        return FakeCall(request, responder(request))
+    }
+}
+
+private class ThrowingCallFactory(private val exception: Exception) : Call.Factory {
+    override fun newCall(request: Request): Call = ThrowingCall(request, exception)
+}
+
+private class FakeCall(private val req: Request, private val response: Response) : Call {
+    private var executed = false
+    private var canceled = false
+    override fun request(): Request = req
+    override fun execute(): Response {
+        executed = true
+        return response
+    }
+    override fun enqueue(responseCallback: Callback) = responseCallback.onResponse(this, response)
+    override fun cancel() { canceled = true }
+    override fun isExecuted(): Boolean = executed
+    override fun isCanceled(): Boolean = canceled
+    override fun timeout(): Timeout = Timeout.NONE
+    override fun clone(): Call = FakeCall(req, response)
+}
+
+private class ThrowingCall(private val req: Request, private val exception: Exception) : Call {
+    override fun request(): Request = req
+    override fun execute(): Response = throw exception
+    override fun enqueue(responseCallback: Callback) = responseCallback.onFailure(this, IOException(exception))
+    override fun cancel() {}
+    override fun isExecuted(): Boolean = false
+    override fun isCanceled(): Boolean = false
+    override fun timeout(): Timeout = Timeout.NONE
+    override fun clone(): Call = ThrowingCall(req, exception)
+}
+
+private fun response(request: Request, body: String, code: Int, message: String = "OK"): Response = Response.Builder()
+    .request(request)
+    .protocol(Protocol.HTTP_1_1)
+    .code(code)
+    .message(message)
+    .body(body.toResponseBody("application/json".toMediaType()))
+    .build()
+
+class PgpQrClientTest {
+
+    // ---- mintToken ----
+
+    @Test
+    fun mintToken_200_decodesTokenAndSendsExpectedRequest() = runBlocking {
+        val callFactory = FakeCallFactory { request ->
+            response(
+                request,
+                """{"token": "tok-1", "expiresAt": "2026-07-14T12:34:56Z", "url": "https://relay.example.com/api/pgp/qr/key?t=tok-1"}""",
+                200,
+            )
+        }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.mintToken("https://relay.example.com/", "sub-1", "hash-1")
+
+        assertTrue(result is PgpQrTokenResult.Success)
+        val token = (result as PgpQrTokenResult.Success).token
+        assertEquals("tok-1", token.token)
+        assertEquals("2026-07-14T12:34:56Z", token.expiresAt)
+        assertEquals("https://relay.example.com/api/pgp/qr/key?t=tok-1", token.url)
+
+        val sentRequest = callFactory.requests.single()
+        assertEquals(
+            "https://relay.example.com/api/pgp/qr/token",
+            sentRequest.url.newBuilder().query(null).build().toString(),
+        )
+        assertEquals("sub-1", sentRequest.url.queryParameter("sub"))
+        assertEquals("hash-1", sentRequest.url.queryParameter("hash"))
+        assertEquals("GET", sentRequest.method)
+    }
+
+    @Test
+    fun mintToken_400_mapsToNoIdentity() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "no PGP identity configured yet", 400) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.mintToken("https://relay.example.com", "sub-1", "hash-1")
+
+        assertTrue(result is PgpQrTokenResult.NoIdentity)
+        assertEquals("no PGP identity configured yet", (result as PgpQrTokenResult.NoIdentity).message)
+    }
+
+    @Test
+    fun mintToken_401_mapsToUnauthorized() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "", 401) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.mintToken("https://relay.example.com", "sub-1", "hash-1")
+
+        assertTrue(result is PgpQrTokenResult.Unauthorized)
+    }
+
+    @Test
+    fun mintToken_503_mapsToServiceUnavailable() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "", 503) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.mintToken("https://relay.example.com", "sub-1", "hash-1")
+
+        assertTrue(result is PgpQrTokenResult.ServiceUnavailable)
+    }
+
+    @Test
+    fun mintToken_malformedBody_mapsToRetryable() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "not json", 200) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.mintToken("https://relay.example.com", "sub-1", "hash-1")
+
+        assertTrue(result is PgpQrTokenResult.Retryable)
+    }
+
+    @Test
+    fun mintToken_networkError_mapsToRetryable() = runBlocking {
+        val callFactory = ThrowingCallFactory(IOException("boom"))
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.mintToken("https://relay.example.com", "sub-1", "hash-1")
+
+        assertTrue(result is PgpQrTokenResult.Retryable)
+        assertEquals("boom", (result as PgpQrTokenResult.Retryable).message)
+    }
+
+    @Test
+    fun mintToken_unexpectedStatusCode_mapsToRetryable() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "", 500) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.mintToken("https://relay.example.com", "sub-1", "hash-1")
+
+        assertTrue(result is PgpQrTokenResult.Retryable)
+    }
+
+    // ---- fetchKey ----
+
+    @Test
+    fun fetchKey_200_decodesKeyAndSendsExpectedRequest_noAuthParams() = runBlocking {
+        val callFactory = FakeCallFactory { request ->
+            response(
+                request,
+                """{"name": "Alice", "fingerprint": "A1B2C3D4E5F6", "publicKey": "-----BEGIN PGP PUBLIC KEY BLOCK-----..."}""",
+                200,
+            )
+        }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.fetchKey("https://relay.example.com", "tok-1")
+
+        assertTrue(result is PgpQrKeyResult.Success)
+        val key = (result as PgpQrKeyResult.Success).key
+        assertEquals("Alice", key.name)
+        assertEquals("A1B2C3D4E5F6", key.fingerprint)
+        assertEquals("-----BEGIN PGP PUBLIC KEY BLOCK-----...", key.publicKey)
+
+        val sentRequest = callFactory.requests.single()
+        assertEquals(
+            "https://relay.example.com/api/pgp/qr/key",
+            sentRequest.url.newBuilder().query(null).build().toString(),
+        )
+        assertEquals("tok-1", sentRequest.url.queryParameter("t"))
+        assertNull(sentRequest.url.queryParameter("sub"))
+        assertNull(sentRequest.url.queryParameter("hash"))
+        assertEquals("GET", sentRequest.method)
+    }
+
+    @Test
+    fun fetchKey_403_mapsToForbidden() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "", 403) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.fetchKey("https://relay.example.com", "tok-1")
+
+        assertTrue(result is PgpQrKeyResult.Forbidden)
+    }
+
+    @Test
+    fun fetchKey_404_mapsToNotFound() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "", 404) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.fetchKey("https://relay.example.com", "tok-1")
+
+        assertTrue(result is PgpQrKeyResult.NotFound)
+    }
+
+    @Test
+    fun fetchKey_503_mapsToServiceUnavailable() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "", 503) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.fetchKey("https://relay.example.com", "tok-1")
+
+        assertTrue(result is PgpQrKeyResult.ServiceUnavailable)
+    }
+
+    @Test
+    fun fetchKey_malformedBody_mapsToRetryable() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "not json", 200) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.fetchKey("https://relay.example.com", "tok-1")
+
+        assertTrue(result is PgpQrKeyResult.Retryable)
+    }
+
+    @Test
+    fun fetchKey_networkError_mapsToRetryable() = runBlocking {
+        val callFactory = ThrowingCallFactory(IOException("boom"))
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.fetchKey("https://relay.example.com", "tok-1")
+
+        assertTrue(result is PgpQrKeyResult.Retryable)
+        assertEquals("boom", (result as PgpQrKeyResult.Retryable).message)
+    }
+
+    @Test
+    fun fetchKey_unexpectedStatusCode_mapsToRetryable() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "", 500) }
+        val client = PgpQrClient(callFactory = callFactory)
+
+        val result = client.fetchKey("https://relay.example.com", "tok-1")
+
+        assertTrue(result is PgpQrKeyResult.Retryable)
+    }
+}

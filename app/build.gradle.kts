@@ -77,6 +77,8 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("org.unifiedpush.android:connector:3.3.3")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    // QR *generation* for the "My QR Code" screen — play-services-code-scanner above only scans.
+    implementation("com.google.zxing:core:3.5.3")
     implementation("com.github.infomaniak:android-rich-html-editor:1.1.0")
 
     implementation(libs.androidx.appcompat)

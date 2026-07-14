@@ -41,6 +41,20 @@
             android:layout_marginBottom="16dp" />
 
         <Button
+            android:id="@+id/btnMyQrCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pgp_qr_my_code_button"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnScanContactKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pgp_qr_scan_button"
+            android:layout_marginBottom="16dp" />
+
+        <Button
             android:id="@+id/btnSaveSettings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
