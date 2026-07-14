@@ -122,6 +122,7 @@ class ContactsListActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menu?.add(0, MENU_REFRESH, 0, R.string.contacts_refresh)
         menu?.add(0, MENU_DEVICE_SYNC, 0, R.string.contacts_device_sync_enable)
+        menu?.add(0, MENU_DEDUPE, 0, R.string.contacts_dedupe)
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -164,6 +165,27 @@ class ContactsListActivity : AppCompatActivity() {
                     disableDeviceSync()
                 } else {
                     checkAndEnableDeviceSync()
+                }
+                true
+            }
+            MENU_DEDUPE -> {
+                lifecycleScope.launch {
+                    val repository = ContactsRuntime.graph(this@ContactsListActivity).repository
+                    val message = when (val outcome = repository.dedupe()) {
+                        is ContactDedupeOutcome.Success -> {
+                            repository.sync()
+                            if (outcome.report.mergedCount == 0) {
+                                getString(R.string.contacts_dedupe_none)
+                            } else {
+                                getString(R.string.contacts_dedupe_result, outcome.report.mergedCount)
+                            }
+                        }
+                        ContactDedupeOutcome.NotPaired -> getString(R.string.connection_mode_relay_not_paired)
+                        ContactDedupeOutcome.Unauthorized -> getString(R.string.contacts_sync_unauthorized)
+                        is ContactDedupeOutcome.ServiceUnavailable -> outcome.message
+                        is ContactDedupeOutcome.Retry -> outcome.message
+                    }
+                    Toast.makeText(this@ContactsListActivity, message, Toast.LENGTH_SHORT).show()
                 }
                 true
             }
@@ -245,5 +267,6 @@ class ContactsListActivity : AppCompatActivity() {
     companion object {
         private const val MENU_REFRESH = 0
         private const val MENU_DEVICE_SYNC = 1
+        private const val MENU_DEDUPE = 2
     }
 }

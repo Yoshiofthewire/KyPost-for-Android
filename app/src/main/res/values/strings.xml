@@ -95,6 +95,9 @@
     <string name="contacts_refresh">Sync now</string>
     <string name="contacts_sync_success">Contacts synced</string>
     <string name="contacts_sync_unauthorized">Device pairing expired or invalid — re-pair this device in Settings</string>
+    <string name="contacts_dedupe">Find &amp; merge duplicates</string>
+    <string name="contacts_dedupe_result">Merged %d duplicate contact(s)</string>
+    <string name="contacts_dedupe_none">No duplicates found</string>
     <string name="contacts_edit_title">Contact</string>
     <string name="contacts_saved">Contact saved</string>
     <string name="contacts_name_required">Name is required</string>

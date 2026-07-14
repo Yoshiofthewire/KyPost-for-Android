@@ -55,3 +55,15 @@ data class ContactSyncPushRequestDto(
     val baseCursor: Long,
     val changes: List<ContactDto>,
 )
+
+@Serializable
+data class ContactDedupeReportDto(
+    val mergedCount: Int = 0,
+    val groups: List<ContactDedupeGroupDto> = emptyList(),
+)
+
+@Serializable
+data class ContactDedupeGroupDto(
+    val survivor: String = "",
+    val absorbed: List<String> = emptyList(),
+)

@@ -17,6 +17,16 @@ sealed class ContactSyncOutcome {
     data class Retry(val message: String) : ContactSyncOutcome()
 }
 
+/** Mirrors [ContactSyncOutcome]'s shape; kept as a parallel type (rather than a variant of
+ * [ContactSyncOutcome]) because `Success` here needs to carry the dedupe report. */
+sealed class ContactDedupeOutcome {
+    data class Success(val report: ContactDedupeReportDto) : ContactDedupeOutcome()
+    object NotPaired : ContactDedupeOutcome()
+    object Unauthorized : ContactDedupeOutcome()
+    data class ServiceUnavailable(val message: String) : ContactDedupeOutcome()
+    data class Retry(val message: String) : ContactDedupeOutcome()
+}
+
 /**
  * Orchestrates contact sync: decides pull-vs-push based on the offline change queue, applies the
  * server delta (upsert changed, remove deleted, reconcile locally-created uids), and handles
@@ -58,6 +68,22 @@ class ContactSyncRepository(
             is ContactSyncResult.ServiceUnavailable -> ContactSyncOutcome.ServiceUnavailable(result.message)
             is ContactSyncResult.BadRequest -> ContactSyncOutcome.Retry(result.message)
             is ContactSyncResult.Retryable -> ContactSyncOutcome.Retry(result.message)
+        }
+    }
+
+    /**
+     * Calls the server-side dedupe endpoint. Deliberately does NOT call [sync] itself — mirrors
+     * [sync]'s single-purpose shape; the caller is responsible for triggering a follow-up sync so
+     * the merge's tombstones/survivor land locally.
+     */
+    suspend fun dedupe(): ContactDedupeOutcome {
+        val pairing = pairingProvider() ?: return ContactDedupeOutcome.NotPaired
+        return when (val result = client.dedupe(pairing.serverUrl, pairing.subscriberId, pairing.subscriberHash)) {
+            is ContactDedupeResult.Success -> ContactDedupeOutcome.Success(result.report)
+            is ContactDedupeResult.Unauthorized -> ContactDedupeOutcome.Unauthorized
+            is ContactDedupeResult.ServiceUnavailable -> ContactDedupeOutcome.ServiceUnavailable(result.message)
+            is ContactDedupeResult.BadRequest -> ContactDedupeOutcome.Retry(result.message)
+            is ContactDedupeResult.Retryable -> ContactDedupeOutcome.Retry(result.message)
         }
     }
 

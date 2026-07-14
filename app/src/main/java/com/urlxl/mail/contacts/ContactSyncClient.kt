@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -21,13 +22,33 @@ sealed class ContactSyncResult {
     data class Retryable(val message: String) : ContactSyncResult()
 }
 
+sealed class ContactDedupeResult {
+    data class Success(val report: ContactDedupeReportDto) : ContactDedupeResult()
+    data class Unauthorized(val message: String) : ContactDedupeResult()
+    data class BadRequest(val message: String) : ContactDedupeResult()
+    data class ServiceUnavailable(val message: String) : ContactDedupeResult()
+    data class Retryable(val message: String) : ContactDedupeResult()
+}
+
+/** Generic HTTP-status-to-result mapping shared by every `ContactSyncClient` endpoint. */
+private sealed class HttpMappedResult<out T> {
+    data class Success<T>(val value: T) : HttpMappedResult<T>()
+    data class Unauthorized(val message: String) : HttpMappedResult<Nothing>()
+    data class BadRequest(val message: String) : HttpMappedResult<Nothing>()
+    data class ServiceUnavailable(val message: String) : HttpMappedResult<Nothing>()
+    data class Retryable(val message: String) : HttpMappedResult<Nothing>()
+}
+
 /**
  * Talks to `/api/contacts/sync`. Auth is `sub`/`hash` query params only (never headers/cookies),
  * kept parallel to [com.urlxl.mail.push.PullNotificationClient] — same okhttp/serialization stack.
  */
 class ContactSyncClient(
     private val json: Json = Json { ignoreUnknownKeys = true },
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
+    // Call.Factory (not the concrete OkHttpClient) so tests can inject a fake without a real
+    // network call or a MockWebServer dependency; OkHttpClient itself satisfies this interface.
+    // Mirrors RelayMailSource's callFactory pattern.
+    private val callFactory: Call.Factory = OkHttpClient.Builder().build(),
 ) {
     suspend fun pull(serverUrl: String, subscriberId: String, subscriberHash: String, since: Long): ContactSyncResult {
         val base = syncUrl(serverUrl) ?: return ContactSyncResult.BadRequest("Server URL is not valid")
@@ -56,25 +77,76 @@ class ContactSyncClient(
         return execute(request)
     }
 
+    suspend fun dedupe(serverUrl: String, subscriberId: String, subscriberHash: String): ContactDedupeResult {
+        val base = dedupeUrl(serverUrl) ?: return ContactDedupeResult.BadRequest("Server URL is not valid")
+        val url = base.newBuilder()
+            .addQueryParameter("sub", subscriberId)
+            .addQueryParameter("hash", subscriberHash)
+            .build()
+        val request = Request.Builder().url(url).post("".toRequestBody(JSON_MEDIA_TYPE)).build()
+        return when (
+            val mapped = executeMapped(
+                request = request,
+                decode = { raw -> runCatching { json.decodeFromString<ContactDedupeReportDto>(raw) }.getOrNull() },
+                malformedMessage = "Malformed contact dedupe response",
+                unauthorizedMessage = "Bad hash or unknown subscriber",
+                serviceUnavailableMessage = "Contact dedupe is not configured on the backend",
+                failureMessagePrefix = "Contact dedupe failed",
+            )
+        ) {
+            is HttpMappedResult.Success -> ContactDedupeResult.Success(mapped.value)
+            is HttpMappedResult.BadRequest -> ContactDedupeResult.BadRequest(mapped.message)
+            is HttpMappedResult.Unauthorized -> ContactDedupeResult.Unauthorized(mapped.message)
+            is HttpMappedResult.ServiceUnavailable -> ContactDedupeResult.ServiceUnavailable(mapped.message)
+            is HttpMappedResult.Retryable -> ContactDedupeResult.Retryable(mapped.message)
+        }
+    }
+
     private fun syncUrl(serverUrl: String) = "${serverUrl.trimEnd('/')}/api/contacts/sync".toHttpUrlOrNull()
 
+    private fun dedupeUrl(serverUrl: String) = "${serverUrl.trimEnd('/')}/api/contacts/dedupe".toHttpUrlOrNull()
+
     private suspend fun execute(request: Request): ContactSyncResult {
+        return when (
+            val mapped = executeMapped(
+                request = request,
+                decode = { raw -> runCatching { json.decodeFromString<ContactSyncPullResponseDto>(raw) }.getOrNull() },
+                malformedMessage = "Malformed contact sync response",
+                unauthorizedMessage = "Bad hash or unknown subscriber",
+                serviceUnavailableMessage = "Contact sync is not configured on the backend",
+                failureMessagePrefix = "Contact sync failed",
+            )
+        ) {
+            is HttpMappedResult.Success -> ContactSyncResult.Success(mapped.value)
+            is HttpMappedResult.BadRequest -> ContactSyncResult.BadRequest(mapped.message)
+            is HttpMappedResult.Unauthorized -> ContactSyncResult.Unauthorized(mapped.message)
+            is HttpMappedResult.ServiceUnavailable -> ContactSyncResult.ServiceUnavailable(mapped.message)
+            is HttpMappedResult.Retryable -> ContactSyncResult.Retryable(mapped.message)
+        }
+    }
+
+    /** Centralized HTTP status -> result mapping: 200 decodes via [decode], 400/401/503 map to their
+     * respective variants, malformed bodies and anything else fall back to [HttpMappedResult.Retryable]. */
+    private suspend fun <T> executeMapped(
+        request: Request,
+        decode: (String) -> T?,
+        malformedMessage: String,
+        unauthorizedMessage: String,
+        serviceUnavailableMessage: String,
+        failureMessagePrefix: String,
+    ): HttpMappedResult<T> {
         val result = withContext(Dispatchers.IO) {
-            okHttpClient.executeSync(request) { response -> response.code to response.body?.string().orEmpty() }
+            callFactory.executeSync(request) { response -> response.code to response.body?.string().orEmpty() }
         }
         val (code, rawBody) = result.getOrNull()
-            ?: return ContactSyncResult.Retryable(result.exceptionOrNull()?.message ?: "Network error during contact sync")
+            ?: return HttpMappedResult.Retryable(result.exceptionOrNull()?.message ?: "Network error during $failureMessagePrefix")
 
         return when (code) {
-            200 -> {
-                val parsed = runCatching { json.decodeFromString<ContactSyncPullResponseDto>(rawBody) }.getOrNull()
-                    ?: return ContactSyncResult.Retryable("Malformed contact sync response")
-                ContactSyncResult.Success(parsed)
-            }
-            400 -> ContactSyncResult.BadRequest(rawBody.ifBlank { "Malformed request" })
-            401 -> ContactSyncResult.Unauthorized("Bad hash or unknown subscriber")
-            503 -> ContactSyncResult.ServiceUnavailable("Contact sync is not configured on the backend")
-            else -> ContactSyncResult.Retryable("Contact sync failed ($code)")
+            200 -> decode(rawBody)?.let { HttpMappedResult.Success(it) } ?: HttpMappedResult.Retryable(malformedMessage)
+            400 -> HttpMappedResult.BadRequest(rawBody.ifBlank { "Malformed request" })
+            401 -> HttpMappedResult.Unauthorized(unauthorizedMessage)
+            503 -> HttpMappedResult.ServiceUnavailable(serviceUnavailableMessage)
+            else -> HttpMappedResult.Retryable("$failureMessagePrefix ($code)")
         }
     }
 }
