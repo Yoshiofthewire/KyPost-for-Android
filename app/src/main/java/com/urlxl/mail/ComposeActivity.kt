@@ -19,6 +19,10 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.infomaniak.lib.richhtmleditor.RichHtmlEditorWebView
+import com.urlxl.mail.contacts.AddressBookSheet
+import com.urlxl.mail.contacts.RecipientField
+import com.urlxl.mail.contacts.toRecipientCandidateOrNull
+import com.urlxl.mail.data.DataRuntime
 import com.urlxl.mail.mail.MailDraft
 import com.urlxl.mail.mail.MailOutcome
 import com.urlxl.mail.mail.MailRuntime
@@ -31,7 +35,9 @@ import java.util.concurrent.Executors
 
 class ComposeActivity : AppCompatActivity() {
 
-    private lateinit var toField: EditText
+    private lateinit var toInput: RecipientInputView
+    private lateinit var ccInput: RecipientInputView
+    private lateinit var bccInput: RecipientInputView
     private lateinit var subjectField: EditText
     private lateinit var bodyEditor: RichHtmlEditorWebView
     private lateinit var bodyPlaceholder: android.view.View
@@ -62,7 +68,6 @@ class ComposeActivity : AppCompatActivity() {
 
         setTitle(R.string.compose_email)
 
-        toField = findViewById(R.id.composeToField)
         subjectField = findViewById(R.id.composeSubjectField)
         bodyEditor = findViewById(R.id.composeBodyEditor)
         bodyPlaceholder = findViewById(R.id.composeBodyPlaceholder)
@@ -80,8 +85,23 @@ class ComposeActivity : AppCompatActivity() {
         numberChip = findViewById(R.id.composeNumberList)
         linkChip = findViewById(R.id.composeLink)
 
-        toField.setText(intent.getStringExtra(EXTRA_TO).orEmpty())
+        toInput = findViewById(R.id.composeToInput)
+        ccInput = findViewById(R.id.composeCcInput)
+        bccInput = findViewById(R.id.composeBccInput)
+        toInput.setLabel(getString(R.string.email_to))
+        ccInput.setLabel(getString(R.string.email_cc))
+        bccInput.setLabel(getString(R.string.email_bcc))
+
+        val contactDao = DataRuntime.graph(this).database.contactDao()
+        val searchContacts: suspend (String) -> List<com.urlxl.mail.contacts.RecipientCandidate> = { query ->
+            contactDao.search(query).mapNotNull { it.toRecipientCandidateOrNull() }
+        }
+        toInput.configure(searchContacts, onOpenAddressBook = ::openAddressBook)
+        ccInput.configure(searchContacts)
+        bccInput.configure(searchContacts)
+
         subjectField.setText(intent.getStringExtra(EXTRA_SUBJECT).orEmpty())
+        toInput.setInitialRecipients(intent.getStringExtra(EXTRA_TO).orEmpty())
         val prefillBody = intent.getStringExtra(EXTRA_BODY).orEmpty()
         bodyEditor.setHtml(plainTextToHtml(prefillBody))
 
@@ -127,6 +147,20 @@ class ComposeActivity : AppCompatActivity() {
         applyGhostButtonTheme(this, cancelButton)
         applyToolbarChipsTheme()
         applyEditorThemeCss()
+        toInput.applyTheme()
+        ccInput.applyTheme()
+        bccInput.applyTheme()
+    }
+
+    private fun openAddressBook() {
+        AddressBookSheet { candidate, field ->
+            val target = when (field) {
+                RecipientField.TO -> toInput
+                RecipientField.CC -> ccInput
+                RecipientField.BCC -> bccInput
+            }
+            target.addRecipient(candidate.email, candidate.name)
+        }.show(supportFragmentManager, AddressBookSheet.TAG)
     }
 
     private fun applyToolbarChipsTheme() {
@@ -247,7 +281,9 @@ class ComposeActivity : AppCompatActivity() {
     }
 
     private fun sendEmail() {
-        val to = toField.text.toString().trim()
+        val to = toInput.commaJoinedRecipients()
+        val cc = ccInput.commaJoinedRecipients()
+        val bcc = bccInput.commaJoinedRecipients()
         val subject = subjectField.text.toString().trim()
         val isBodyEmpty = bodyEditor.isEmptyFlow.value != false
 
@@ -262,7 +298,7 @@ class ComposeActivity : AppCompatActivity() {
         bodyEditor.exportHtml { html ->
             ioExecutor.execute {
                 val outcome = MailRuntime.graph(this).repository.send(
-                    MailDraft(to = to, subject = subject, body = html, mode = "html", attachments = attachments.toList()),
+                    MailDraft(to = to, cc = cc, bcc = bcc, subject = subject, body = html, mode = "html", attachments = attachments.toList()),
                 )
                 runOnUiThread {
                     when (outcome) {

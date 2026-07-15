@@ -7,29 +7,23 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <LinearLayout
+    <com.urlxl.mail.RecipientInputView
+        android:id="@+id/composeToInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="12dp">
+        android:layout_marginBottom="8dp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/email_to"
-            android:textSize="12sp"
-            android:gravity="center_vertical"
-            android:layout_marginEnd="8dp" />
+    <com.urlxl.mail.RecipientInputView
+        android:id="@+id/composeCcInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp" />
 
-        <EditText
-            android:id="@+id/composeToField"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="recipient@example.com"
-            android:inputType="textEmailAddress" />
-
-    </LinearLayout>
+    <com.urlxl.mail.RecipientInputView
+        android:id="@+id/composeBccInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
