@@ -806,12 +806,16 @@ class DeviceContactRepository(
                         ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE -> {
                             if (data1.isNotBlank()) {
                                 // Every ims row this app writes uses PROTOCOL_CUSTOM + a resolved
-                                // display string (see DeviceContactFieldCoding.imCustomProtocolLabel)
-                                // rather than a recognizable service code, so reading it back can
-                                // only honestly reconstruct it as the "other" bucket (service = "")
-                                // with that string carried as the freeform label.
-                                val label = data6?.takeIf { it.isNotBlank() }
-                                ims.add(ContactImDto(service = "", label = label, value = data1))
+                                // display string (see DeviceContactFieldCoding.imCustomProtocolLabel).
+                                // Map that display string back to its service code via the inverse
+                                // catalog (imServiceFromCustomProtocolLabel) so a recognized service
+                                // round-trips intact; only truly unrecognized strings fall back to
+                                // the "other" bucket (service = "") with the string carried as the
+                                // freeform label.
+                                val customProtocol = data6?.takeIf { it.isNotBlank() }
+                                val service = DeviceContactFieldCoding.imServiceFromCustomProtocolLabel(customProtocol)
+                                val label = if (service.isEmpty()) customProtocol else null
+                                ims.add(ContactImDto(service = service, label = label, value = data1))
                             }
                         }
 

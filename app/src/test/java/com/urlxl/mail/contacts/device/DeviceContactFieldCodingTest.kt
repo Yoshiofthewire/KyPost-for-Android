@@ -42,6 +42,32 @@ class DeviceContactFieldCodingTest {
         assertEquals("Other", DeviceContactFieldCoding.imCustomProtocolLabel("icq", null))
     }
 
+    // --- imServiceFromCustomProtocolLabel (read-path inverse) ---
+
+    @Test
+    fun imServiceFromCustomProtocolLabel_knownDisplayNames_roundTripToServiceCodes() {
+        val services = listOf(
+            "whatsapp", "signal", "telegram", "instagram", "x",
+            "linkedin", "facebook", "mastodon", "matrix",
+        )
+        for (service in services) {
+            val displayLabel = DeviceContactFieldCoding.imCustomProtocolLabel(service, null)
+            assertEquals(
+                service,
+                DeviceContactFieldCoding.imServiceFromCustomProtocolLabel(displayLabel),
+                "round-trip failed for service '$service' (display label '$displayLabel')",
+            )
+        }
+    }
+
+    @Test
+    fun imServiceFromCustomProtocolLabel_unrecognizedLabel_fallsBackToOther() {
+        assertEquals("", DeviceContactFieldCoding.imServiceFromCustomProtocolLabel("Discord"))
+        assertEquals("", DeviceContactFieldCoding.imServiceFromCustomProtocolLabel("Other"))
+        assertEquals("", DeviceContactFieldCoding.imServiceFromCustomProtocolLabel(null))
+        assertEquals("", DeviceContactFieldCoding.imServiceFromCustomProtocolLabel(""))
+    }
+
     // --- relationType / relationCustomLabel ---
 
     @Test

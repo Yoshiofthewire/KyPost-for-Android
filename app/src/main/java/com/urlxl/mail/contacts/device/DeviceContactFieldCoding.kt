@@ -28,6 +28,25 @@ object DeviceContactFieldCoding {
         else -> label?.takeIf { it.isNotBlank() } ?: "Other"
     }
 
+    /** Inverse of [imCustomProtocolLabel]'s recognized-service branch: an on-device
+     *  `Im.CUSTOM_PROTOCOL` display string read back from the phone's native Contacts app -> the
+     *  closed `service` vocabulary word. Unrecognized display strings (including the "Other"
+     *  fallback and any freeform label) collapse to `""`, matching the documented convention that
+     *  `service == ""` means "other" and the display string is carried as the freeform `label`
+     *  instead. */
+    fun imServiceFromCustomProtocolLabel(label: String?): String = when (label) {
+        "WhatsApp" -> "whatsapp"
+        "Signal" -> "signal"
+        "Telegram" -> "telegram"
+        "Instagram" -> "instagram"
+        "X (Twitter)" -> "x"
+        "LinkedIn" -> "linkedin"
+        "Facebook" -> "facebook"
+        "Mastodon" -> "mastodon"
+        "Matrix" -> "matrix"
+        else -> ""
+    }
+
     /** `spouse|child|parent|partner|manager|assistant|friend|relative|other` -> the closest
      *  `Relation.TYPE_*` constant (values confirmed against the installed Android SDK's
      *  `android.jar`, not guessed); `"other"` and any unrecognized label fall back to
