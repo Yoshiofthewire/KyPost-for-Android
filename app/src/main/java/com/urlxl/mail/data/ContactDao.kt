@@ -22,4 +22,22 @@ interface ContactDao {
 
     @Query("DELETE FROM contacts")
     suspend fun clearAll()
+
+    /** Name-or-email substring match for the contact-autocomplete feature (spec:
+     *  ContactAutocomplete.md). LIKE is case-insensitive for ASCII in SQLite by default, so no
+     *  explicit COLLATE NOCASE is needed on the LIKE itself. Matches against the raw
+     *  [ContactEntity.emailsJson] string rather than decoding it — the email address appears
+     *  verbatim inside the encoded JSON, so a substring match is correct without a JOIN/decode;
+     *  see RecipientMatching.kt for why only the *primary* email is ever displayed even though
+     *  this query can match on a secondary one. Contacts with no email at all
+     *  (`emailsJson = '[]'`) are excluded — nothing to autocomplete to. */
+    @Query(
+        """
+        SELECT * FROM contacts
+        WHERE (fn LIKE '%' || :query || '%' OR emailsJson LIKE '%' || :query || '%')
+          AND emailsJson != '[]'
+        ORDER BY fn COLLATE NOCASE
+        """,
+    )
+    suspend fun search(query: String): List<ContactEntity>
 }
