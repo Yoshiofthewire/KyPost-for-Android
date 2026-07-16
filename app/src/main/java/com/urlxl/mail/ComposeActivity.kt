@@ -6,7 +6,8 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.text.TextUtils
 import android.util.Base64
-import android.widget.Button
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
@@ -40,8 +41,6 @@ class ComposeActivity : AppCompatActivity() {
     private lateinit var subjectField: EditText
     private lateinit var bodyEditor: RichHtmlEditorWebView
     private lateinit var bodyPlaceholder: android.view.View
-    private lateinit var sendButton: Button
-    private lateinit var cancelButton: Button
     private lateinit var attachButton: Chip
     private lateinit var attachmentChips: ChipGroup
     private lateinit var boldChip: Chip
@@ -53,6 +52,7 @@ class ComposeActivity : AppCompatActivity() {
     private lateinit var detailsDividers: List<android.view.View>
     private lateinit var messageDivider: android.view.View
     private lateinit var rootView: android.view.View
+    private var sendMenuItem: MenuItem? = null
     private val ioExecutor = Executors.newSingleThreadExecutor()
     private val attachments = mutableListOf<OutgoingAttachment>()
 
@@ -73,8 +73,6 @@ class ComposeActivity : AppCompatActivity() {
         subjectField = findViewById(R.id.composeSubjectField)
         bodyEditor = findViewById(R.id.composeBodyEditor)
         bodyPlaceholder = findViewById(R.id.composeBodyPlaceholder)
-        sendButton = findViewById(R.id.composeSendButton)
-        cancelButton = findViewById(R.id.composeCancelButton)
         attachButton = findViewById(R.id.composeAttachButton)
         attachmentChips = findViewById(R.id.composeAttachmentsCard)
         boldChip = findViewById(R.id.composeBold)
@@ -133,24 +131,43 @@ class ComposeActivity : AppCompatActivity() {
             .onEach { isEmpty -> bodyPlaceholder.visibility = if (isEmpty != false) android.view.View.VISIBLE else android.view.View.GONE }
             .launchIn(lifecycleScope)
 
-        sendButton.setOnClickListener { sendEmail() }
-        cancelButton.setOnClickListener { finish() }
         attachButton.setOnClickListener { pickAttachments.launch(arrayOf("*/*")) }
-        applyPrimaryButtonTheme(this, sendButton)
-        applyGhostButtonTheme(this, cancelButton)
         applyToolbarChipsTheme()
     }
 
     override fun onResume() {
         super.onResume()
         applyThemeToActivity(this)
-        applyPrimaryButtonTheme(this, sendButton)
-        applyGhostButtonTheme(this, cancelButton)
         applyToolbarChipsTheme()
+        applySendMenuItemTheme()
         applyEditorThemeCss()
         toInput.applyTheme()
         ccInput.applyTheme()
         bccInput.applyTheme()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val item = menu.add(0, MENU_SEND, 0, R.string.compose_send)
+        item.setIcon(R.drawable.ic_send)
+        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        sendMenuItem = item
+        applySendMenuItemTheme()
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            MENU_SEND -> {
+                sendEmail()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun applySendMenuItemTheme() {
+        val accent = Color.parseColor(getStoredThemePalette(this).accent)
+        sendMenuItem?.icon?.mutate()?.setTint(readableOn(accent))
     }
 
     private fun openAddressBook() {
@@ -303,8 +320,7 @@ class ComposeActivity : AppCompatActivity() {
             return
         }
 
-        sendButton.isEnabled = false
-        sendButton.text = "Sending..."
+        sendMenuItem?.isEnabled = false
 
         bodyEditor.exportHtml { html ->
             ioExecutor.execute {
@@ -322,8 +338,7 @@ class ComposeActivity : AppCompatActivity() {
                             finish()
                         }
                         else -> {
-                            sendButton.isEnabled = true
-                            sendButton.text = getString(R.string.compose_send)
+                            sendMenuItem?.isEnabled = true
                             Toast.makeText(this, outcome.userFacingMessage(), Toast.LENGTH_LONG).show()
                         }
                     }
@@ -344,5 +359,6 @@ class ComposeActivity : AppCompatActivity() {
 
         // Mirror of the backend maxMailAttachmentBytes (25 MB total decoded).
         private const val MAX_ATTACHMENT_BYTES = 25L * 1024 * 1024
+        private const val MENU_SEND = 1
     }
 }

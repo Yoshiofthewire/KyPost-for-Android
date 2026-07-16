@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Scrollable so the focused field (recipient/subject/body editor) can scroll above the
+     keyboard instead of being clipped by it — composeRoot's bottom padding already grows by the
+     IME inset (see AppTheme.applyTopInsetWithHeader), which only helps if there's a scroll
+     container to reveal the extra space. -->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/composeRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true">
+
+<LinearLayout
+    android:id="@+id/composeRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -103,42 +112,30 @@
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/composeBold"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    style="@style/Widget.Llama.IconOnlyChip"
                     android:checkable="true"
                     app:chipIcon="@drawable/ic_bold"
-                    app:chipIconSize="18dp"
-                    android:text=""
                     android:contentDescription="@string/compose_format_bold" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/composeItalic"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    style="@style/Widget.Llama.IconOnlyChip"
                     android:checkable="true"
                     app:chipIcon="@drawable/ic_italic"
-                    app:chipIconSize="18dp"
-                    android:text=""
                     android:contentDescription="@string/compose_format_italic" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/composeUnderline"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    style="@style/Widget.Llama.IconOnlyChip"
                     android:checkable="true"
                     app:chipIcon="@drawable/ic_underline"
-                    app:chipIconSize="18dp"
-                    android:text=""
                     android:contentDescription="@string/compose_format_underline" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/composeLink"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    style="@style/Widget.Llama.IconOnlyChip"
                     android:checkable="true"
                     app:chipIcon="@drawable/ic_link"
-                    app:chipIconSize="18dp"
-                    android:text=""
                     android:contentDescription="@string/compose_format_link" />
 
             </com.google.android.material.chip.ChipGroup>
@@ -205,26 +202,5 @@
         android:visibility="gone"
         app:chipSpacingHorizontal="6dp" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:layout_marginTop="4dp">
-
-        <Button
-            android:id="@+id/composeCancelButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/cancel"
-            android:layout_marginEnd="8dp" />
-
-        <Button
-            android:id="@+id/composeSendButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/compose_send" />
-
-    </LinearLayout>
-
 </LinearLayout>
+</androidx.core.widget.NestedScrollView>

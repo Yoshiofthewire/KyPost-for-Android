@@ -33,4 +33,21 @@
     <style name="TextAppearance.Llama.BottomNavLabel" parent="TextAppearance.MaterialComponents.Caption">
         <item name="android:textStyle">bold</item>
     </style>
+
+    <!-- Chip's default padding budgets space for a text label after the icon (iconEndPadding +
+         textStartPadding + textEndPadding), which pushes the icon left of center on an icon-only
+         chip once that label is empty (Compose's formatting toolbar buttons). Zero out the
+         text-side gutters and give the icon symmetric start/end padding instead. -->
+    <style name="Widget.Llama.IconOnlyChip" parent="Widget.MaterialComponents.Chip.Action">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="chipIconSize">18dp</item>
+        <item name="chipStartPadding">10dp</item>
+        <item name="chipEndPadding">10dp</item>
+        <item name="iconStartPadding">0dp</item>
+        <item name="iconEndPadding">0dp</item>
+        <item name="textStartPadding">0dp</item>
+        <item name="textEndPadding">0dp</item>
+        <item name="android:text"></item>
+    </style>
 </resources>
