@@ -525,6 +525,23 @@ private fun applyThemeToViewTree(view: View, palette: ThemePalette) {
 
 private val density: Float get() = android.content.res.Resources.getSystem().displayMetrics.density
 
+private fun panelBackground(context: Context, palette: ThemePalette): GradientDrawable {
+    return GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = context.resources.getDimension(R.dimen.card_corner_radius)
+        setColor(Color.parseColor(palette.panel))
+    }
+}
+
+/**
+ * Paints [view]'s background as a rounded, theme-`panel`-colored panel using the shared
+ * STYLE_GUIDE.md §3 Card/panel radius (`@dimen/card_corner_radius`). For containers that need a
+ * *rounded* panel fill rather than the flat fill `applyThemeToViewTree` gives generic ViewGroups.
+ */
+fun applyPanelBackground(context: Context, view: View) {
+    view.background = panelBackground(context, getStoredThemePalette(context))
+}
+
 private fun fieldBackground(palette: ThemePalette): GradientDrawable {
     return GradientDrawable().apply {
         shape = GradientDrawable.RECTANGLE

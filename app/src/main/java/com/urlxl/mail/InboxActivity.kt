@@ -5,7 +5,6 @@ import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -201,12 +200,8 @@ class InboxActivity : AppCompatActivity() {
 
         headerFolderTitle.setTextColor(inkStrong)
 
-        // Rounded panel bar behind the keyword pills, matching the app's 14dp card/panel radius.
-        keywordChipScroll.background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 14f * resources.displayMetrics.density
-            setColor(panel)
-        }
+        // Rounded panel bar behind the keyword pills — shared STYLE_GUIDE.md §3 Card/panel radius.
+        applyPanelBackground(this, keywordChipScroll)
 
         // Re-style every existing chip in place so a theme switch recolors them even when
         // rebuildTabs() short-circuits because the keyword set itself hasn't changed.
@@ -548,7 +543,7 @@ class InboxActivity : AppCompatActivity() {
         // Rounded on the same side as the row's own corners (item_email.xml's 14dp
         // cardCornerRadius) so the reveal doesn't show a sharp corner poking out from behind the
         // rounded card as it slides away.
-        val cardRadius = 14f * resources.displayMetrics.density
+        val cardRadius = resources.getDimension(R.dimen.card_corner_radius)
         val deleteBackground = android.graphics.drawable.GradientDrawable().apply {
             setColor(SWIPE_DELETE_COLOR)
             cornerRadii = floatArrayOf(cardRadius, cardRadius, 0f, 0f, 0f, 0f, cardRadius, cardRadius)
