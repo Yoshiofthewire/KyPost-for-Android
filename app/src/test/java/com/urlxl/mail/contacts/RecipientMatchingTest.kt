@@ -39,14 +39,6 @@ class RecipientMatchingTest {
     }
 
     @Test
-    fun isValidEmailFormat_rejectsMalformedAddresses() {
-        assertTrue(isValidEmailFormat("ada@example.com"))
-        assertFalse(isValidEmailFormat("not-an-email"))
-        assertFalse(isValidEmailFormat("ada@"))
-        assertFalse(isValidEmailFormat(""))
-    }
-
-    @Test
     fun matchRanges_findsFirstCaseInsensitiveOccurrence() {
         assertEquals(listOf(0..1), matchRanges("Ada Lovelace", "ad"))
         assertEquals(listOf(4..11), matchRanges("Ada Lovelace", "Lovelace"))

@@ -8,7 +8,7 @@ class DeviceContactConflictResolverTest {
     @Test
     fun parseIsoValidTimestamp() {
         val ms = DeviceContactConflictResolver.parseIso("2026-01-15T10:30:00Z")
-        assertEquals(1736933400000L, ms)
+        assertEquals(1768473000000L, ms)
     }
 
     @Test

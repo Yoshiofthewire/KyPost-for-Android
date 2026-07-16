@@ -7,8 +7,12 @@ object DeviceContactMatcher {
         return email.trim().lowercase()
     }
 
+    /** Strips non-digits, then drops a leading NANP "1" country code (11 digits, e.g.
+     *  "+1 555 123 4567") so it normalizes the same as its 10-digit form ("555-123-4567") —
+     *  device contacts and server-synced contacts don't consistently store one or the other. */
     fun normalizePhone(phone: String): String {
-        return phone.replace(Regex("[^0-9]"), "")
+        val digits = phone.replace(Regex("[^0-9]"), "")
+        return if (digits.length == 11 && digits.startsWith("1")) digits.substring(1) else digits
     }
 
     fun findMatch(
