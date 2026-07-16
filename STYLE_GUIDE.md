@@ -87,7 +87,7 @@ Already aligned on Android — this table is now a confirmation, not a to-do lis
 |---|---|---|---|---|
 | Text field / input | 14 | `fieldBackground` cornerRadius 14dp ✓ | `Shape.field` 14 ✓ | `shapeField` 14 ✓ |
 | Primary/secondary/danger button | 10 | `buttonBackground`/`ghostButtonBackground`/`dangerButtonBackground` cornerRadius 10dp ✓ | `Shape.button` 10 ✓ | `shapeButton` 10 ✓ |
-| Card / panel | 14 | (panel containers use flat fill, no distinct radius token yet) | `Shape.panel` 14 | `shapePanel` 14 |
+| Card / panel | 14 | `@dimen/card_corner_radius` / `applyPanelBackground` (`AppTheme.kt`) 14dp ✓ | `Shape.panel` 14 ✓ | `shapePanel` 14 ✓ |
 | Modal / bottom sheet | 14 | `AlertDialog`/`BottomSheetDialog` default Material shape — close enough, don't hand-tune | `Shape.sheet` 14 | `shapeSheet` 14 |
 | Empty state | 10 | `applyEmptyStateBackground` cornerRadius 10dp ✓ | `Shape.emptyState` 10 ✓ | `shapeEmptyState` 10 ✓ |
 | Pill badge, filter tab, segmented toggle | full stadium (`radius = height / 2`) | `applyPillChipTheme` via Material `Chip` (stadium by default) ✓ | `Capsule()` ✓ | `radius: height / 2` ✓ |
