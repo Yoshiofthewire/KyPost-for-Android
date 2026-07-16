@@ -4,9 +4,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.text.SpannableString
 import android.text.TextUtils
-import android.text.style.UnderlineSpan
 import android.util.Base64
 import android.widget.Button
 import android.widget.EditText
@@ -44,14 +42,17 @@ class ComposeActivity : AppCompatActivity() {
     private lateinit var bodyPlaceholder: android.view.View
     private lateinit var sendButton: Button
     private lateinit var cancelButton: Button
-    private lateinit var attachButton: Button
+    private lateinit var attachButton: Chip
     private lateinit var attachmentChips: ChipGroup
     private lateinit var boldChip: Chip
     private lateinit var italicChip: Chip
     private lateinit var underlineChip: Chip
-    private lateinit var bulletChip: Chip
-    private lateinit var numberChip: Chip
     private lateinit var linkChip: Chip
+    private lateinit var detailsCard: android.view.View
+    private lateinit var messageCard: android.view.View
+    private lateinit var detailsDividers: List<android.view.View>
+    private lateinit var messageDivider: android.view.View
+    private lateinit var rootView: android.view.View
     private val ioExecutor = Executors.newSingleThreadExecutor()
     private val attachments = mutableListOf<OutgoingAttachment>()
 
@@ -64,8 +65,8 @@ class ComposeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_compose)
         applyThemeToActivity(this)
 
-        val root = findViewById<android.view.View>(R.id.composeRoot)
-        applyTopInsetWithHeader(this, root)
+        rootView = findViewById(R.id.composeRoot)
+        applyTopInsetWithHeader(this, rootView)
 
         setTitle(R.string.compose_email)
 
@@ -75,16 +76,19 @@ class ComposeActivity : AppCompatActivity() {
         sendButton = findViewById(R.id.composeSendButton)
         cancelButton = findViewById(R.id.composeCancelButton)
         attachButton = findViewById(R.id.composeAttachButton)
-        attachmentChips = findViewById(R.id.composeAttachmentChips)
+        attachmentChips = findViewById(R.id.composeAttachmentsCard)
         boldChip = findViewById(R.id.composeBold)
         italicChip = findViewById(R.id.composeItalic)
         underlineChip = findViewById(R.id.composeUnderline)
-        underlineChip.text = SpannableString(underlineChip.text).apply {
-            setSpan(UnderlineSpan(), 0, length, 0)
-        }
-        bulletChip = findViewById(R.id.composeBulletList)
-        numberChip = findViewById(R.id.composeNumberList)
         linkChip = findViewById(R.id.composeLink)
+        detailsCard = findViewById(R.id.composeDetailsCard)
+        messageCard = findViewById(R.id.composeMessageCard)
+        detailsDividers = listOf(
+            findViewById(R.id.composeDetailsDivider1),
+            findViewById(R.id.composeDetailsDivider2),
+            findViewById(R.id.composeDetailsDivider3),
+        )
+        messageDivider = findViewById(R.id.composeMessageDivider)
 
         toInput = findViewById(R.id.composeToInput)
         ccInput = findViewById(R.id.composeCcInput)
@@ -109,8 +113,6 @@ class ComposeActivity : AppCompatActivity() {
         boldChip.setOnClickListener { bodyEditor.toggleBold() }
         italicChip.setOnClickListener { bodyEditor.toggleItalic() }
         underlineChip.setOnClickListener { bodyEditor.toggleUnderline() }
-        bulletChip.setOnClickListener { bodyEditor.toggleUnorderedList() }
-        numberChip.setOnClickListener { bodyEditor.toggleOrderedList() }
         linkChip.setOnClickListener {
             if (linkChip.isChecked) {
                 bodyEditor.unlink()
@@ -124,8 +126,6 @@ class ComposeActivity : AppCompatActivity() {
                 boldChip.isChecked = statuses.isBold
                 italicChip.isChecked = statuses.isItalic
                 underlineChip.isChecked = statuses.isUnderlined
-                bulletChip.isChecked = statuses.isUnorderedListSelected
-                numberChip.isChecked = statuses.isOrderedListSelected
                 linkChip.isChecked = statuses.isLinkSelected
             }
         }
@@ -165,12 +165,22 @@ class ComposeActivity : AppCompatActivity() {
     }
 
     private fun applyToolbarChipsTheme() {
-        listOf(boldChip, italicChip, underlineChip, bulletChip, numberChip, linkChip).forEach {
+        listOf(boldChip, italicChip, underlineChip, linkChip, attachButton).forEach {
             applyPillChipTheme(this, it)
         }
-        // The Attach button is borderless, so nothing tints its label to the active palette the way
-        // the pills tint themselves — set it explicitly or it renders as unreadable default-dark text.
-        attachButton.setTextColor(Color.parseColor(getStoredThemePalette(this).inkStrong))
+        // applyThemeToViewTree paints every ViewGroup (root included) flat `panel`-colored by
+        // default, so root and the cards below would otherwise be indistinguishable. Repaint the
+        // root `bg`-colored (mirrors InboxActivity's recyclerView.setBackgroundColor(bg)) so the
+        // rounded `panel` cards actually pop against it instead of blending in.
+        rootView.setBackgroundColor(Color.parseColor(getStoredThemePalette(this).bg))
+        // Rounded panel cards behind each section — shared STYLE_GUIDE.md §3 Card/panel radius,
+        // same applyPanelBackground precedent as Inbox's keyword-chip bar.
+        applyPanelBackground(this, detailsCard)
+        applyPanelBackground(this, messageCard)
+        applyPanelBackground(this, attachmentChips)
+        val line = Color.parseColor(getStoredThemePalette(this).line)
+        detailsDividers.forEach { it.setBackgroundColor(line) }
+        messageDivider.setBackgroundColor(line)
     }
 
     /** Injects the active palette into the editor's WebView content so it doesn't render as a

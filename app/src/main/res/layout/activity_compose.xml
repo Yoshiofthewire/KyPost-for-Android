@@ -7,154 +7,200 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <com.urlxl.mail.RecipientInputView
-        android:id="@+id/composeToInput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" />
-
-    <com.urlxl.mail.RecipientInputView
-        android:id="@+id/composeCcInput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" />
-
-    <com.urlxl.mail.RecipientInputView
-        android:id="@+id/composeBccInput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp" />
-
+    <!-- Details card: To/Cc/Bcc/Subject grouped as one form, thin dividers between rows
+         (composeDetailsDivider1/2/3, themed to palette.line in ComposeActivity, same pattern as
+         EmailDetailActivity's emailDivider). -->
     <LinearLayout
+        android:id="@+id/composeDetailsCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="12dp">
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:layout_marginBottom="16dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/compose_subject"
-            android:textSize="12sp"
-            android:gravity="center_vertical"
-            android:layout_marginEnd="8dp" />
-
-        <EditText
-            android:id="@+id/composeSubjectField"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Email subject" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="8dp">
-
-    <com.google.android.material.chip.ChipGroup
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        app:chipSpacingHorizontal="6dp">
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/composeBold"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checkable="true"
-            android:text="@string/compose_format_bold"
-            android:textStyle="bold" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/composeItalic"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checkable="true"
-            android:text="@string/compose_format_italic"
-            android:textStyle="italic" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/composeUnderline"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checkable="true"
-            android:text="@string/compose_format_underline" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/composeBulletList"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checkable="true"
-            android:text="@string/compose_format_bullets" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/composeNumberList"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checkable="true"
-            android:text="@string/compose_format_numbers" />
-
-        <com.google.android.material.chip.Chip
-            android:id="@+id/composeLink"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checkable="true"
-            android:text="@string/compose_format_link" />
-
-    </com.google.android.material.chip.ChipGroup>
-
-        <Button
-            android:id="@+id/composeAttachButton"
-            style="?attr/borderlessButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:text="@string/compose_attach" />
-
-    </LinearLayout>
-
-    <!-- Fixed height (not 0dp+weight): the RichHtmlEditorWebView forcibly overrides its own
-         layoutParams.height to its content height via updateWebViewHeight, and NestedScrollView's
-         fillViewport only re-stretches the content when the scroll view itself is measured with an
-         EXACTLY spec. Under 0dp+layout_weight the child ends up collapsed to the empty editor's
-         ~1-line content height, leaving the body blank. A concrete height keeps the box visible. -->
-    <androidx.core.widget.NestedScrollView
-        android:layout_width="match_parent"
-        android:layout_height="320dp"
-        android:layout_marginBottom="12dp"
-        android:fillViewport="true">
-
-        <FrameLayout
+        <com.urlxl.mail.RecipientInputView
+            android:id="@+id/composeToInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/edit_text_background">
+            android:layout_marginBottom="12dp" />
 
-            <com.infomaniak.lib.richhtmleditor.RichHtmlEditorWebView
-                android:id="@+id/composeBodyEditor"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+        <View
+            android:id="@+id/composeDetailsDivider1"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="12dp" />
 
-            <!-- The editor has no native hint mechanism (it's a WebView); this mirrors it via
-                 ComposeActivity toggling visibility off ComposeActivity's isEmptyFlow collector. -->
+        <com.urlxl.mail.RecipientInputView
+            android:id="@+id/composeCcInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" />
+
+        <View
+            android:id="@+id/composeDetailsDivider2"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="12dp" />
+
+        <com.urlxl.mail.RecipientInputView
+            android:id="@+id/composeBccInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp" />
+
+        <View
+            android:id="@+id/composeDetailsDivider3"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
             <TextView
-                android:id="@+id/composeBodyPlaceholder"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
-                android:text="@string/compose_body_hint"
-                android:textSize="16sp" />
+                android:text="@string/compose_subject"
+                android:textSize="12sp"
+                android:gravity="center_vertical"
+                android:layout_marginEnd="8dp" />
 
-        </FrameLayout>
-    </androidx.core.widget.NestedScrollView>
+            <EditText
+                android:id="@+id/composeSubjectField"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Email subject" />
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/composeAttachmentChips"
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Message card: icon-only formatting toolbar sits flush above the body editor (a hairline
+         divider, not a gap, separates them) so the two read as one control. -->
+    <LinearLayout
+        android:id="@+id/composeMessageCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <com.google.android.material.chip.ChipGroup
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:chipSpacingHorizontal="6dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/composeBold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checkable="true"
+                    app:chipIcon="@drawable/ic_bold"
+                    app:chipIconSize="18dp"
+                    android:text=""
+                    android:contentDescription="@string/compose_format_bold" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/composeItalic"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checkable="true"
+                    app:chipIcon="@drawable/ic_italic"
+                    app:chipIconSize="18dp"
+                    android:text=""
+                    android:contentDescription="@string/compose_format_italic" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/composeUnderline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checkable="true"
+                    app:chipIcon="@drawable/ic_underline"
+                    app:chipIconSize="18dp"
+                    android:text=""
+                    android:contentDescription="@string/compose_format_underline" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/composeLink"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checkable="true"
+                    app:chipIcon="@drawable/ic_link"
+                    app:chipIconSize="18dp"
+                    android:text=""
+                    android:contentDescription="@string/compose_format_link" />
+
+            </com.google.android.material.chip.ChipGroup>
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/composeAttachButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checkable="false"
+                app:chipIcon="@drawable/ic_attach"
+                app:chipIconSize="18dp"
+                android:text="@string/compose_attach"
+                android:layout_marginStart="4dp" />
+
+        </LinearLayout>
+
+        <View
+            android:id="@+id/composeMessageDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Fixed height (not 0dp+weight): the RichHtmlEditorWebView forcibly overrides its own
+             layoutParams.height to its content height via updateWebViewHeight, and NestedScrollView's
+             fillViewport only re-stretches the content when the scroll view itself is measured with an
+             EXACTLY spec. Under 0dp+layout_weight the child ends up collapsed to the empty editor's
+             ~1-line content height, leaving the body blank. A concrete height keeps the box visible. -->
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
+            android:fillViewport="true">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <com.infomaniak.lib.richhtmleditor.RichHtmlEditorWebView
+                    android:id="@+id/composeBodyEditor"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- The editor has no native hint mechanism (it's a WebView); this mirrors it via
+                     ComposeActivity toggling visibility off ComposeActivity's isEmptyFlow collector. -->
+                <TextView
+                    android:id="@+id/composeBodyPlaceholder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="4dp"
+                    android:text="@string/compose_body_hint"
+                    android:textSize="16sp" />
+
+            </FrameLayout>
+        </androidx.core.widget.NestedScrollView>
+
+    </LinearLayout>
+
+    <!-- Attachments card: hidden entirely (not just its ChipGroup) when there are no attachments. -->
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/composeAttachmentsCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp"
         android:layout_marginBottom="8dp"
         android:visibility="gone"
         app:chipSpacingHorizontal="6dp" />
@@ -163,7 +209,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="end">
+        android:gravity="end"
+        android:layout_marginTop="4dp">
 
         <Button
             android:id="@+id/composeCancelButton"

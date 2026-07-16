@@ -311,13 +311,21 @@ fun applyPillChipTheme(context: Context, chip: com.google.android.material.chip.
     val uncheckedState = intArrayOf(-android.R.attr.state_checked)
     val states = arrayOf(checkedState, uncheckedState)
 
+    val contentColors = ColorStateList(states, intArrayOf(onAccent, inkStrong))
+
     chip.chipBackgroundColor = ColorStateList(states, intArrayOf(accent, panel))
-    chip.setTextColor(ColorStateList(states, intArrayOf(onAccent, inkStrong)))
+    chip.setTextColor(contentColors)
     chip.chipStrokeColor = ColorStateList(states, intArrayOf(accent, line))
     chip.chipStrokeWidth = 1f * density
     chip.rippleColor = ColorStateList.valueOf(withAlpha(accent, 0.22f))
     chip.checkedIcon = null
-    chip.chipIcon = null
+    // Only tint, never clear: callers that pre-set `app:chipIcon` in XML (e.g. Compose's
+    // icon-only formatting chips) want it recolored on every theme pass, same as the text color
+    // above. Callers that never set one (the common case — keyword/attachment/plain-text pills)
+    // are unaffected since chip.chipIcon stays null either way.
+    if (chip.chipIcon != null) {
+        chip.chipIconTint = contentColors
+    }
 }
 
 /** Small solid circle — a minor "has unread content" cue, reused for both inbox rows and keyword
