@@ -12,6 +12,7 @@ import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
@@ -192,7 +193,19 @@ class PushPairingActivity : AppCompatActivity() {
 
     private fun consumeDeepLink(intent: android.content.Intent?) {
         val data = intent?.dataString ?: return
-        viewModel.pairFromLink(data)
+        when (val parsed = NativePairingDeepLinkParser.parse(data)) {
+            is PairingParseResult.Error -> Toast.makeText(this, parsed.reason, Toast.LENGTH_SHORT).show()
+            is PairingParseResult.Success -> confirmAndApplyDeepLinkPairing(parsed.pairing)
+        }
+    }
+
+    private fun confirmAndApplyDeepLinkPairing(pairing: PairingData) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.pairing_confirm_title)
+            .setMessage(getString(R.string.pairing_confirm_message, pairing.serverUrl))
+            .setPositiveButton(R.string.pairing_confirm_positive) { _, _ -> viewModel.applyDeepLinkPairing(pairing) }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun scanQr() {

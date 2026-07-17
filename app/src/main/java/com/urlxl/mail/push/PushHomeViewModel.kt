@@ -74,34 +74,48 @@ class PushHomeViewModel(application: Application) : AndroidViewModel(application
                     localMessage.value = parsed.reason
                     isWorking.value = false
                 }
-                is PairingParseResult.Success -> {
-                    val resolution = NativeRegistrationEndpointResolver.resolve(
-                        qrReg = parsed.pairing.registrationUrl.takeIf { it.isNotBlank() },
-                        qrServerUrl = parsed.pairing.serverUrl,
-                    )
-                    when (resolution) {
-                        is NativeRegistrationEndpointResolver.Resolution.MissingServerUrl -> {
-                            localMessage.value = "Pairing QR is missing a server URL"
-                            isWorking.value = false
-                        }
-                        is NativeRegistrationEndpointResolver.Resolution.Resolved -> {
-                            val pending = parsed.pairing.copy(registrationUrl = resolution.registrationUrl)
-                            val result = graph.syncCoordinator.attemptPairing(pending)
-                            if (result is NativeRegistrationResult.Success) {
-                                // If the server put this user in pull mode, start fetching immediately.
-                                graph.pullCoordinator.pullNowAsync()
-                            }
-                            localMessage.value = when (result) {
-                                is NativeRegistrationResult.Success -> "Device paired and token synced"
-                                is NativeRegistrationResult.Error -> {
-                                    val suffix = if (result.expiredPairingToken) " — rescan the pairing QR code" else ""
-                                    "Pairing failed: ${result.message}$suffix"
-                                }
-                            }
-                            isWorking.value = false
-                        }
+                is PairingParseResult.Success -> applyParsedPairing(parsed.pairing)
+            }
+        }
+    }
+
+    /** Applies a deep-link pairing the user has already confirmed via the
+     *  destination-server dialog in PushPairingActivity — unlike [pairFromLink]
+     *  (QR scan, itself a deliberate user action), a deep link can fire from any
+     *  app with zero user awareness, so it requires that separate confirmation
+     *  step before reaching this. */
+    fun applyDeepLinkPairing(pairing: PairingData) {
+        scope.launch {
+            isWorking.value = true
+            applyParsedPairing(pairing)
+        }
+    }
+
+    private suspend fun applyParsedPairing(pairing: PairingData) {
+        val resolution = NativeRegistrationEndpointResolver.resolve(
+            qrReg = pairing.registrationUrl.takeIf { it.isNotBlank() },
+            qrServerUrl = pairing.serverUrl,
+        )
+        when (resolution) {
+            is NativeRegistrationEndpointResolver.Resolution.MissingServerUrl -> {
+                localMessage.value = "Pairing QR is missing a server URL"
+                isWorking.value = false
+            }
+            is NativeRegistrationEndpointResolver.Resolution.Resolved -> {
+                val pending = pairing.copy(registrationUrl = resolution.registrationUrl)
+                val result = graph.syncCoordinator.attemptPairing(pending)
+                if (result is NativeRegistrationResult.Success) {
+                    // If the server put this user in pull mode, start fetching immediately.
+                    graph.pullCoordinator.pullNowAsync()
+                }
+                localMessage.value = when (result) {
+                    is NativeRegistrationResult.Success -> "Device paired and token synced"
+                    is NativeRegistrationResult.Error -> {
+                        val suffix = if (result.expiredPairingToken) " — rescan the pairing QR code" else ""
+                        "Pairing failed: ${result.message}$suffix"
                     }
                 }
+                isWorking.value = false
             }
         }
     }

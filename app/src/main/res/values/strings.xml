@@ -90,6 +90,9 @@
     <string name="push_pairing_scan_qr">Scan QR Code</string>
     <string name="push_pairing_use_unifiedpush">Use UnifiedPush</string>
     <string name="push_pairing_use_firebase">Use Firebase</string>
+    <string name="pairing_confirm_title">Pair this device?</string>
+    <string name="pairing_confirm_message">This link wants to pair this device with:\n\n%1$s\n\nOnly continue if you trust the source of this link.</string>
+    <string name="pairing_confirm_positive">Pair</string>
 
     <string name="mfa_approval_title">Approve sign-in</string>
     <string name="mfa_approval_body">Someone is trying to sign in to your account. If this wasn\'t you, deny it.</string>
