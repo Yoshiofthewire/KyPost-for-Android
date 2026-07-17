@@ -25,5 +25,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "llama mail for android"
+rootProject.name = "kypost for android"
 include(":app")

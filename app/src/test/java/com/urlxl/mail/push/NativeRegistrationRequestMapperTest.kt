@@ -29,7 +29,7 @@ class NativeRegistrationRequestMapperTest {
         assertEquals("last-known-device-id", request.deviceId)
         assertEquals("android", request.platform)
         assertEquals(Build.MODEL, request.deviceName)
-        assertEquals("llama Mail for Android v$APP_VERSION", request.appVersion)
+        assertEquals("KyPost for Android v$APP_VERSION", request.appVersion)
     }
 
     @Test

@@ -1,4 +1,4 @@
-# Visual Style Guide — aligning with the llama Mail family
+# Visual Style Guide — aligning with the KyPost family
 
 This app is a sibling to three other clients for the same product/account/brand:
 the web app (`../llama labels/frontend`), the iOS/macOS app (`../llama-Mail-for-Mac`,
@@ -24,10 +24,10 @@ pointing back at this file — keep section numbers stable when editing.)
 
 ## 1. Color system (already shared — keep it that way)
 
-All four apps already ship the same 13 named themes (`Dark Matter`, `Light Matter`,
+All four apps already ship the same 15 named themes (`Dark Matter`, `Light Matter`,
 `Tropics`, `Tropic Night`, `Ocean`, `Coffee`, `White Cliffs`, `Cyber Punk`,
-`Neon Purple`, `Space`, `Sky`, `Forest`, `Sun`), default `Dark Matter`. Don't fork this
-list per-platform.
+`Neon Purple`, `Space`, `Sky`, `Forest`, `Sun`, `Patina Ky`, `Polished Ky`), default
+`Patina Ky`. Don't fork this list per-platform.
 
 Web's `ThemeVars` has more fields than mobile's `ThemePalette` (16 vs 6). iOS's
 `ThemePalette` sits in between (7 fields: `bg/panel/ink/inkStrong/accent/accentSoft/line`)

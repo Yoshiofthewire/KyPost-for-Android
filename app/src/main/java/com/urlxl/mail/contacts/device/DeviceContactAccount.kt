@@ -6,7 +6,7 @@ import android.content.Context
 
 object DeviceContactAccount {
     const val ACCOUNT_TYPE = "com.urlxl.mail.contacts"
-    const val ACCOUNT_NAME = "Llama Mail"
+    const val ACCOUNT_NAME = "KyPost"
 
     fun account(): Account = Account(ACCOUNT_NAME, ACCOUNT_TYPE)
 }

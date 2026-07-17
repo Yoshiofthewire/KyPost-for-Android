@@ -1,4 +1,4 @@
-# llama mail for Android
+# KyPost for Android
 
 This app includes a production push client flow for **Llama Labels notifications via native backend pairing + FCM**. Novu is not used on the client — the backend owns the Novu integration (if any) behind its own registration endpoint.
 

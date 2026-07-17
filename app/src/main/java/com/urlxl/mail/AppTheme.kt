@@ -36,6 +36,8 @@ val THEME_OPTIONS = listOf(
     "Sky",
     "Forest",
     "Sun",
+    "Patina Ky",
+    "Polished Ky",
 )
 
 data class ThemePalette(
@@ -77,12 +79,14 @@ private val themePalettes: Map<String, ThemePalette> = mapOf(
     "Sky" to ThemePalette("#dff1ff", "#f4fbff", "#2f4f64", "#183142", "#6db3d6", "#93bdd2", "#6db3d6", "#4f93b8", "#4f93b8"),
     "Forest" to ThemePalette("#142018", "#1f2f24", "#c7dbc7", "#e3f0df", "#8faa74", "#4f694f", "#8faa74", "#6f8d5a", "#6f8d5a"),
     "Sun" to ThemePalette("#fff3dc", "#fff9ec", "#5a4024", "#392611", "#e0ab4f", "#d4b27a", "#e0ab4f", "#bb8631", "#bb8631"),
+    "Patina Ky" to ThemePalette("#0d0f14", "#161a22", "#64748b", "#e2e8f0", "#4deeea", "#1e293b", "#4deeea", "#10b981", "#0e9668"),
+    "Polished Ky" to ThemePalette("#eef2f6", "#ffffff", "#475569", "#0f172a", "#0891b2", "#cbd5e1", "#0891b2", "#10b981", "#059669"),
 )
 
 fun getStoredThemeName(context: Context): String {
     val prefs = context.getSharedPreferences("com.urlxl.mail.settings", Context.MODE_PRIVATE)
-    val saved = prefs.getString(THEME_STORAGE_KEY, "Dark Matter") ?: "Dark Matter"
-    return if (THEME_OPTIONS.contains(saved)) saved else "Dark Matter"
+    val saved = prefs.getString(THEME_STORAGE_KEY, "Patina Ky") ?: "Patina Ky"
+    return if (THEME_OPTIONS.contains(saved)) saved else "Patina Ky"
 }
 
 fun saveThemeName(context: Context, themeName: String) {
@@ -95,7 +99,7 @@ fun getStoredThemePalette(context: Context): ThemePalette {
 }
 
 fun themePaletteFor(themeName: String): ThemePalette {
-    return themePalettes[themeName] ?: themePalettes.getValue("Dark Matter")
+    return themePalettes[themeName] ?: themePalettes.getValue("Patina Ky")
 }
 
 fun applyThemeToActivity(activity: Activity) {

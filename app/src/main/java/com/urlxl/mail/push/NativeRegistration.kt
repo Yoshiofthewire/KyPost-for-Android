@@ -76,7 +76,7 @@ object NativeRegistrationRequestMapper {
             platform = "android",
             transport = transport,
             deviceName = Build.MODEL,
-            appVersion = "llama Mail for Android v$APP_VERSION",
+            appVersion = "KyPost for Android v$APP_VERSION",
             p256dh = p256dh,
             auth = auth,
         )

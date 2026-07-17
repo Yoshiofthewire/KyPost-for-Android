@@ -1,7 +1,7 @@
-# Llama Mail Mobile Mail Relay — Backend Integration Guide
+# KyPost Mobile Mail Relay — Backend Integration Guide
 
 This document describes how the (separate-repo) Llama Labels mobile app
-should read and send mail through a self-hosted Llama Mail server. It
+should read and send mail through a self-hosted KyPost server. It
 mirrors `iOS_Mobile_notify.md` and `Mobile_Contact_Sync.md`'s shape:
 concrete request/response JSON, an error table, and a deployment checklist
 — written so a fresh Claude session working in the mobile app's repo can
