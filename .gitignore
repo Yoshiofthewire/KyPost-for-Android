@@ -30,6 +30,15 @@ app/google-services.json
 # OS artifacts
 .DS_Store
 
+# Editor
+.vscode/
+
+# APK / native debug artifacts
+*.apk
+*.ap_
+*.dex
+*.hprof
+
 # Claude Code worktrees
 .claude/worktrees/
 .worktrees/
