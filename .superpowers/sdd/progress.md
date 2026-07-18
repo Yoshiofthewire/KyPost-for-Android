@@ -12,7 +12,7 @@
 - [x] Task 3: Sort the self-contact to the top of the contact list
 - [x] Task 4: Label the self-contact in the contact list UI
 - [x] Task 5: Add `contactCard` to the PGP QR key response model
-- [ ] Task 6: Map a scanned `contactCard` to a `ContactDto`
+- [x] Task 6: Map a scanned `contactCard` to a `ContactDto`
 - [ ] Task 7: Offer "Create New Contact" when a scan includes a contact card
 
 ## Completed
@@ -46,6 +46,12 @@
   Plain-JVM test task, no device needed — both new `PgpQrClientTest` cases (present/absent) ran
   for real and passed. Reviewer independently cross-checked all 23 field names against the live
   kypost-server source.
+
+- Task 6: complete (commit 6690a2f, spec ✅ quality ✅). Added `PgpKeyActivity.contactDtoFromCard`
+  (companion-object pure function, mirrors `parsePgpQrKeyUrl`'s testable-without-Android pattern) —
+  maps all 23 `PgpQrContactCardDto` fields to `ContactDto`, `fn` falls back to the scanned name
+  when the card's own `fn` is null/blank. Plain-JVM tests, no device needed, both new
+  `PgpKeyActivityTest` cases ran for real. `onFingerprintConfirmed` untouched (Task 7's job).
 
 ## Final Whole-Branch Review
 
