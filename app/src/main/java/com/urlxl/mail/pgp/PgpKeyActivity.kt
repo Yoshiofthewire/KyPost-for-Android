@@ -39,8 +39,9 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
  * no intermediate navigation screen.
  *
  * On a successful scan, fetches the key via [PgpQrClient.fetchKey] (unauthenticated — the token
- * is the credential), shows the fingerprint for out-of-band confirmation, then lets the user pick
- * an existing contact (via [ContactsListActivity] in pick mode) to save the key onto.
+ * is the credential), shows the fingerprint for out-of-band confirmation, then either creates a new
+ * contact from the included card (if present) or lets the user pick an existing contact (via
+ * [ContactsListActivity] in pick mode) to save the key onto.
  *
  * Saving does NOT go through a per-contact REST endpoint — this app never calls those. It follows
  * [com.urlxl.mail.contacts.ContactEditActivity.save]'s exact pattern instead: `queueUpdate` on the
@@ -296,7 +297,7 @@ class PgpKeyActivity : AppCompatActivity() {
          *  legitimately absent. */
         internal fun contactDtoFromCard(card: PgpQrContactCardDto, fallbackName: String, pgpKey: String): ContactDto =
             ContactDto(
-                fn = card.fn?.takeIf { it.isNotBlank() } ?: fallbackName,
+                fn = card.fn?.takeIf { it.isNotBlank() } ?: fallbackName.ifBlank { "Unknown" },
                 givenName = card.givenName,
                 familyName = card.familyName,
                 middleName = card.middleName,

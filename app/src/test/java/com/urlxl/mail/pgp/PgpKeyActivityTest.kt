@@ -89,4 +89,13 @@ class PgpKeyActivityTest {
 
         assertEquals("Alice", dto.fn)
     }
+
+    @Test
+    fun contactDtoFromCard_blankCardNameAndBlankFallback_usesUnknown() {
+        val card = PgpQrContactCardDto(fn = null)
+
+        val dto = PgpKeyActivity.contactDtoFromCard(card, fallbackName = "", pgpKey = "PUBKEY")
+
+        assertEquals("Unknown", dto.fn)
+    }
 }
