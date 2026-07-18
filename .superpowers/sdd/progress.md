@@ -9,7 +9,7 @@
 
 - [x] Task 1: Add `isSelf` to `ContactDto`/`ContactEntity`/`ContactMappers`
 - [x] Task 2: Room migration 5→6 for the `isSelf` column
-- [ ] Task 3: Sort the self-contact to the top of the contact list
+- [x] Task 3: Sort the self-contact to the top of the contact list
 - [ ] Task 4: Label the self-contact in the contact list UI
 - [ ] Task 5: Add `contactCard` to the PGP QR key response model
 - [ ] Task 6: Map a scanned `contactCard` to a `ContactDto`
@@ -29,6 +29,11 @@
   `./gradlew connectedDebugAndroidTest --tests "com.urlxl.mail.data.MigrationTest"` once a
   device is reachable** to close this out — same applies to Task 3's `ContactDaoOrderingTest`
   and Task 7's manual verification, all of which need a connected device.
+
+- Task 3: complete (commit 3887853, spec ✅ quality ✅). Changed `ContactDao.observeAll()` to
+  `ORDER BY isSelf DESC, fn COLLATE NOCASE`; added `ContactDaoOrderingTest` with a fixture
+  (`"Zzz Self"`, alphabetically last) that can only pass if self-first ordering actually beats
+  alphabetical order. Same no-device gap as Task 2 — compiles, not yet executed on a device.
 
 ## Final Whole-Branch Review
 
