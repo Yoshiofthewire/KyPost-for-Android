@@ -10,7 +10,7 @@
 - [x] Task 1: Add `isSelf` to `ContactDto`/`ContactEntity`/`ContactMappers`
 - [x] Task 2: Room migration 5→6 for the `isSelf` column
 - [x] Task 3: Sort the self-contact to the top of the contact list
-- [ ] Task 4: Label the self-contact in the contact list UI
+- [x] Task 4: Label the self-contact in the contact list UI
 - [ ] Task 5: Add `contactCard` to the PGP QR key response model
 - [ ] Task 6: Map a scanned `contactCard` to a `ContactDto`
 - [ ] Task 7: Offer "Create New Contact" when a scan includes a contact card
@@ -34,6 +34,12 @@
   `ORDER BY isSelf DESC, fn COLLATE NOCASE`; added `ContactDaoOrderingTest` with a fixture
   (`"Zzz Self"`, alphabetically last) that can only pass if self-first ordering actually beats
   alphabetical order. Same no-device gap as Task 2 — compiles, not yet executed on a device.
+
+- Task 4: complete (commit eade49b, spec ✅ quality ✅). `ContactAdapter.bind()` now prepends
+  "This is you" (`contact_self_label`) to the detail line for `isSelf` contacts, joined with org
+  via " · ". No layout changes. No device for the brief's manual walkthrough — reviewer
+  hand-traced all four join-logic cases (self/org combinations) against the diff instead;
+  **do the actual in-app walkthrough once a device is reachable** (brief Step 3).
 
 ## Final Whole-Branch Review
 
