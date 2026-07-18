@@ -10,6 +10,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
@@ -211,10 +212,41 @@ class PgpKeyActivity : AppCompatActivity() {
     }
 
     private fun onFingerprintConfirmed() {
-        if (pendingKey == null) return
+        val key = pendingKey ?: return
+        if (key.contactCard != null) {
+            showSaveChoiceDialog(key)
+        } else {
+            launchContactPicker()
+        }
+    }
+
+    private fun showSaveChoiceDialog(key: PgpQrKeyDto) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.pgp_qr_scan_save_choice_title)
+            .setPositiveButton(R.string.pgp_qr_scan_save_new_button) { _, _ -> createNewContactFromCard(key) }
+            .setNegativeButton(R.string.pgp_qr_scan_save_existing_button) { _, _ -> launchContactPicker() }
+            .show()
+    }
+
+    private fun launchContactPicker() {
         pickContactLauncher.launch(
             Intent(this, ContactsListActivity::class.java).putExtra(ContactsListActivity.EXTRA_PICK_MODE, true),
         )
+    }
+
+    private fun createNewContactFromCard(key: PgpQrKeyDto) {
+        val card = key.contactCard ?: return
+        val dto = contactDtoFromCard(card, fallbackName = key.name, pgpKey = key.publicKey)
+        lifecycleScope.launch {
+            val graph = ContactsRuntime.graph(this@PgpKeyActivity)
+            graph.repository.queueCreate(dto)
+            graph.coordinator.syncNowAsync()
+
+            Toast.makeText(this@PgpKeyActivity, R.string.pgp_qr_scan_saved_new, Toast.LENGTH_SHORT).show()
+            resetConfirmationState()
+            scanStatusText.text = ""
+            scanButton.setText(R.string.pgp_qr_scan_scan_button)
+        }
     }
 
     private fun saveKeyToContact(uid: String) {
