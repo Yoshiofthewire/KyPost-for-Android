@@ -10,7 +10,7 @@
 - [x] Task 2: `RelayMailSource.kt`
 - [x] Task 3: `ContactSyncClient.kt`
 - [x] Task 4: `GroupsSyncClient.kt`
-- [ ] Task 5: `PullNotificationClient.kt`
+- [x] Task 5: `PullNotificationClient.kt`
 - [ ] Task 6: `PgpQrClient.kt`
 
 ## Notes
@@ -38,3 +38,9 @@
   Minor (deferred to final review): import ordering in ContactSyncClientTest.kt
   (HEADER_SUBSCRIBER_ID before HEADER_SUBSCRIBER_HASH, not alphabetical) — cosmetic.
 - Task 4: complete (commits 640c0c4..fdd73e9, review clean, no findings).
+- Task 5: complete (commits 9662919..e94db65, review clean — constructor
+  retype (OkHttpClient -> Call.Factory) verified backward-compatible with
+  PullSyncCoordinator.kt, which stays untouched).
+  Minor (deferred to final review): PullResult.BadRequest's kdoc at
+  PullNotificationClient.kt:21 still says "sub/hash" (still semantically
+  correct, just stale terminology, outside this task's mandated scope).
