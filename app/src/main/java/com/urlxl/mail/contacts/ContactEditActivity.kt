@@ -10,9 +10,11 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.chip.Chip
 import com.urlxl.mail.R
 import com.urlxl.mail.applyDangerButtonTheme
 import com.urlxl.mail.applyPrimaryButtonTheme
+import com.urlxl.mail.applyStatusBadgeTheme
 import com.urlxl.mail.applyThemeToActivity
 import com.urlxl.mail.applyTopInsetWithHeader
 import com.urlxl.mail.bindAvatar
@@ -34,6 +36,17 @@ class ContactEditActivity : AppCompatActivity() {
     private lateinit var notesField: EditText
     private lateinit var saveButton: Button
     private lateinit var deleteButton: Button
+    private lateinit var givenNameField: EditText
+    private lateinit var familyNameField: EditText
+    private lateinit var middleNameField: EditText
+    private lateinit var prefixField: EditText
+    private lateinit var suffixField: EditText
+    private lateinit var nicknameField: EditText
+    private lateinit var phoneticGivenNameField: EditText
+    private lateinit var phoneticFamilyNameField: EditText
+    private lateinit var pronounsField: EditText
+    private lateinit var selfBadge: Chip
+    private lateinit var pgpBadge: Chip
 
     private var existingUid: String = ""
     private var existingRev: Long = 0
@@ -63,6 +76,19 @@ class ContactEditActivity : AppCompatActivity() {
         emailField = findViewById(R.id.editContactEmail)
         phoneField = findViewById(R.id.editContactPhone)
         notesField = findViewById(R.id.editContactNotes)
+        givenNameField = findViewById(R.id.editContactGivenName)
+        familyNameField = findViewById(R.id.editContactFamilyName)
+        middleNameField = findViewById(R.id.editContactMiddleName)
+        prefixField = findViewById(R.id.editContactPrefix)
+        suffixField = findViewById(R.id.editContactSuffix)
+        nicknameField = findViewById(R.id.editContactNickname)
+        phoneticGivenNameField = findViewById(R.id.editContactPhoneticGivenName)
+        phoneticFamilyNameField = findViewById(R.id.editContactPhoneticFamilyName)
+        pronounsField = findViewById(R.id.editContactPronouns)
+        selfBadge = findViewById(R.id.contactEditSelfBadge)
+        pgpBadge = findViewById(R.id.contactEditPgpBadge)
+        findViewById<ExpandableSectionView>(R.id.sectionName).setTitle(getString(R.string.contacts_section_name))
+        findViewById<ExpandableSectionView>(R.id.sectionName).setExpanded(true)
         saveButton = findViewById(R.id.btnSaveContact)
         deleteButton = findViewById(R.id.btnDeleteContact)
 
@@ -105,6 +131,26 @@ class ContactEditActivity : AppCompatActivity() {
             fnField.setText(dto.fn)
             orgField.setText(dto.org.orEmpty())
             notesField.setText(dto.notes.orEmpty())
+            givenNameField.setText(dto.givenName.orEmpty())
+            familyNameField.setText(dto.familyName.orEmpty())
+            middleNameField.setText(dto.middleName.orEmpty())
+            prefixField.setText(dto.prefix.orEmpty())
+            suffixField.setText(dto.suffix.orEmpty())
+            nicknameField.setText(dto.nickname.orEmpty())
+            phoneticGivenNameField.setText(dto.phoneticGivenName.orEmpty())
+            phoneticFamilyNameField.setText(dto.phoneticFamilyName.orEmpty())
+            pronounsField.setText(dto.pronouns.orEmpty())
+            selfBadge.visibility = if (dto.isSelf) View.VISIBLE else View.GONE
+            if (dto.isSelf) {
+                selfBadge.text = getString(R.string.contact_self_label)
+                applyStatusBadgeTheme(this@ContactEditActivity, selfBadge, active = true)
+            }
+            val hasKey = !dto.pgpKey.isNullOrBlank()
+            pgpBadge.visibility = if (hasKey) View.VISIBLE else View.GONE
+            if (hasKey) {
+                pgpBadge.text = getString(R.string.contacts_pgp_badge_visible)
+                applyStatusBadgeTheme(this@ContactEditActivity, pgpBadge, active = true)
+            }
             emailField.setText(dto.emails.firstOrNull()?.value.orEmpty())
             phoneField.setText(dto.phones.firstOrNull()?.value.orEmpty())
             extraEmails = dto.emails.drop(1)
@@ -128,12 +174,12 @@ class ContactEditActivity : AppCompatActivity() {
             uid = existingUid,
             rev = existingRev,
             fn = fn,
-            givenName = null,
-            familyName = null,
-            middleName = null,
-            prefix = null,
-            suffix = null,
-            nickname = null,
+            givenName = givenNameField.text.toString().trim().ifBlank { null },
+            familyName = familyNameField.text.toString().trim().ifBlank { null },
+            middleName = middleNameField.text.toString().trim().ifBlank { null },
+            prefix = prefixField.text.toString().trim().ifBlank { null },
+            suffix = suffixField.text.toString().trim().ifBlank { null },
+            nickname = nicknameField.text.toString().trim().ifBlank { null },
             org = orgField.text.toString().trim().ifBlank { null },
             title = null,
             department = null,
@@ -146,10 +192,10 @@ class ContactEditActivity : AppCompatActivity() {
             websites = emptyList(),
             relations = emptyList(),
             events = emptyList(),
-            phoneticGivenName = null,
-            phoneticFamilyName = null,
+            phoneticGivenName = phoneticGivenNameField.text.toString().trim().ifBlank { null },
+            phoneticFamilyName = phoneticFamilyNameField.text.toString().trim().ifBlank { null },
             customFields = emptyList(),
-            pronouns = null,
+            pronouns = pronounsField.text.toString().trim().ifBlank { null },
         )
 
         lifecycleScope.launch {
