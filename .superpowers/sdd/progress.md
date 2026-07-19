@@ -8,7 +8,7 @@
 ## Tasks
 
 - [x] Task 1: `RepeatableFieldList<T>` generic component
-- [ ] Task 2: `ExpandableSectionView` collapsible container
+- [x] Task 2: `ExpandableSectionView` collapsible container
 - [ ] Task 3: Extend `mergedContactDto` for every newly-editable field
 - [ ] Task 4: Rewrite `activity_contact_edit.xml` with all sections
 - [ ] Task 5: Wire Name section + read-only `isSelf`/`pgpKey` badges
@@ -64,3 +64,17 @@
   overstating its own coverage (`everyMutation_firesOnChanged`), one
   fully-qualified-type-instead-of-import style nit. Carry these three Minor
   items to the final whole-branch review for triage.
+
+- Task 2: complete (commits cadba8d..782782b — `a486dd3` impl, `782782b` fix
+  for the count-badge default-visibility gap the reviewer caught). Review:
+  spec ✅, quality Approved, no Critical/Important issues. Reviewer explicitly
+  checked for a Task-1-style stale-closure bug and found none (component has
+  no text-field bind logic at all). One Minor→acted-on finding: `sectionHeaderCount`
+  had no default visibility, so any section that never calls `setItemCount`
+  (Name, Work, Notes — none have list fields) would show an empty visible
+  badge; fixed via `android:visibility="gone"` default (`782782b`) rather than
+  left as debt, since it would have visibly affected every remaining task.
+  Other Minor findings not fixed (non-blocking): `setTitle`/`setItemCount`
+  have no dedicated test coverage, one redundant cast in the test file, the
+  multi-child-order-preservation path in `onFinishInflate` is only exercised
+  with a single child. Carry to final whole-branch review for triage.
