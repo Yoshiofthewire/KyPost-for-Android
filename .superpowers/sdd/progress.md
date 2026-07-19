@@ -1,277 +1,129 @@
-# Contact Fields Editor Progress Ledger
+# Contact Sync Intro Popup Progress Ledger
 
-**Plan:** docs/superpowers/plans/2026-07-18-contact-fields-editor.md
-**Spec:** docs/superpowers/specs/2026-07-18-contact-fields-editor-design.md
-**Base commit:** b0db7a1
-**Start date:** 2026-07-18
+**Plan:** docs/superpowers/plans/2026-07-19-contact-sync-intro-popup.md
+**Spec:** docs/superpowers/specs/2026-07-19-contact-sync-intro-popup-design.md
+**Base commit:** b3fb12e
+**Start date:** 2026-07-19
 
 ## Tasks
 
-- [x] Task 1: `RepeatableFieldList<T>` generic component
-- [x] Task 2: `ExpandableSectionView` collapsible container
-- [x] Task 3: Extend `mergedContactDto` for every newly-editable field
-- [x] Task 4: Rewrite `activity_contact_edit.xml` with all sections
-- [x] Task 5: Wire Name section + read-only `isSelf`/`pgpKey` badges
-- [x] Task 6: Wire Work section
-- [x] Task 7: Wire Contact section (full emails/phones lists)
-- [x] Task 8: Wire Addresses section
-- [x] Task 9: Wire Online section (websites + IMs)
-- [x] Task 10: Wire Personal section (birthday, events, relations)
-- [x] Task 11: Wire Notes relocation + Other section (custom fields)
-- [x] Task 12: Manual on-device verification
+- [x] Task 1: Add the one-time-shown flag to `DeviceContactSyncSettings`
+- [x] Task 2: Add intro-dialog strings
+- [x] Task 3: Extract `DeviceContactSyncEnabler` and refactor `ContactsListActivity` to use it
+- [x] Task 4: Show the intro popup before the first QR scan in `PushPairingActivity`
 
 ## Notes
 
-- Prior ledger content (contact-self-flag plan) removed here — that plan is
-  complete and merged to `main` (see `git log` for `worktree-contact-self-flag`
-  if that history is needed again).
-- This worktree's branch was initially created from stale `origin/main` (the
-  `EnterWorktree` default `baseRef`), then hard-reset to local `main` after
-  discovering it was missing same-session work. Before that reset, three
-  bug fixes made earlier in this session (contact-sync mutex, pairing-store
-  crash recovery, ContactEditActivity data-loss fix) were still sitting
-  *uncommitted* in the primary checkout — committed there as
-  `e8bc116`/`e496af3`/`b0db7a1` before this worktree was re-synced. Recorded
-  here so a future resume doesn't mistake those for part of this plan's task
-  commits.
-- The first Task 1 implementer subagent committed to `main` in the primary
-  checkout instead of this worktree (same class of mistake the old,
-  superseded ledger already warned about once). Caught immediately: reset
-  `main` back to `b0db7a1` (safe — the commit `d0cb70c` stayed reachable via
-  this worktree's branch, so nothing was lost), no re-implementation needed.
-  Flagging again here since it's now happened on two separate plans in this
-  repo — worth a harder fix (e.g. an explicit cwd check in the implementer
-  prompt) if it recurs a third time.
-- Task 1's reviewer found a real stale-closure data-loss bug in the plan's
-  own example `bind` wiring (verbatim in the brief, not an implementer
-  deviation) that would have propagated into Tasks 7/9/10/11 unchanged.
-  Fixed in the plan directly (commit `e7d5e68`) before dispatching any of
-  those tasks — see plan diff for the shared-`emit`-lambda pattern now used
-  everywhere a row has more than one editable field.
+- Prior ledger content (contact-fields-editor plan) removed here — that plan
+  completed and its "ready to merge" branch review is preserved in git
+  history (`git log -p -- .superpowers/sdd/progress.md`) if needed again.
+- Worktree created via `EnterWorktree` (branch `worktree-contact-sync-intro-popup`,
+  based on local `main` at `ffb454a`).
+- `app/google-services.json` is gitignored and wasn't present in the fresh
+  worktree; copied over manually from the primary checkout before running
+  the baseline build. Any future resume in a *new* worktree for this plan
+  will need the same copy step.
+- Baseline `./gradlew :app:testDebugUnitTest` passed clean before Task 1 was
+  dispatched.
+- No Android device/emulator is attached in this environment (`adb devices`
+  empty). Tasks 3 and 4 both call for manual on-device verification per the
+  plan; both were substituted with build success + careful diff review by
+  the implementer/reviewer instead. **A human needs to do a real on-device
+  pass (fresh install, both Contacts-screen toggle and the new pairing-
+  screen popup flow) before this branch is considered done**, per the
+  plan's own Testing section.
+- `EnterWorktree`'s default `baseRef` branched from `origin/main` (`ffb454a`),
+  missing the spec/plan commits made locally on `main` this session
+  (`3ae3d8a`, `b3fb12e`). Fast-forwarded this worktree's branch onto local
+  `main` (`git merge --ff-only main`) before dispatching Task 1 — base commit
+  above is post-fast-forward.
 
 ## Completed
 
-- Task 1: complete (commits b0db7a1..e60a065 — `d0cb70c` impl, `e60a065` fix
-  for a themed-context test bug the implementer's own device run caught;
-  `092a4da` interspersed is controller housekeeping, not part of this task).
-  Review: spec ✅, quality Approved. One Important finding (the stale-closure
-  bug above) — explicitly scoped by the reviewer as not blocking this task
-  (lives in the test's example code, not in `RepeatableFieldList` itself) but
-  actioned at the plan level regardless, see Notes above. Minor findings not
-  fixed (all explicitly non-blocking, "nice to have"): two unused placeholder
-  string resources (`contacts_row_a_hint`/`contacts_row_b_hint`, dead by
-  design — real hints are set per-section in later tasks), one test name
-  overstating its own coverage (`everyMutation_firesOnChanged`), one
-  fully-qualified-type-instead-of-import style nit. Carry these three Minor
-  items to the final whole-branch review for triage.
+- Task 1: complete (commit `ac0fb6f`). Review: spec ✅, quality Approved, no
+  findings of any severity. Byte-for-byte match to the brief's code block;
+  build verification (`compileDebugKotlin`) is the correct verification
+  method for this Context-backed SharedPreferences class per Global
+  Constraints (no Robolectric in this repo).
 
-- Task 2: complete (commits cadba8d..782782b — `a486dd3` impl, `782782b` fix
-  for the count-badge default-visibility gap the reviewer caught). Review:
-  spec ✅, quality Approved, no Critical/Important issues. Reviewer explicitly
-  checked for a Task-1-style stale-closure bug and found none (component has
-  no text-field bind logic at all). One Minor→acted-on finding: `sectionHeaderCount`
-  had no default visibility, so any section that never calls `setItemCount`
-  (Name, Work, Notes — none have list fields) would show an empty visible
-  badge; fixed via `android:visibility="gone"` default (`782782b`) rather than
-  left as debt, since it would have visibly affected every remaining task.
-  Other Minor findings not fixed (non-blocking): `setTitle`/`setItemCount`
-  have no dedicated test coverage, one redundant cast in the test file, the
-  multi-child-order-preservation path in `onFinishInflate` is only exercised
-  with a single child. Carry to final whole-branch review for triage.
-
-- Task 3: complete (commit `8aca186`). Review: spec ✅, quality Approved, no
-  Critical/Important issues. `mergedContactDto` grew from 8 to 26 params,
-  every one correctly threaded signature→`.copy()` with matching names;
-  `save()`'s call site correctly left the brief-blessed `null`/`emptyList()`
-  placeholders for the 18 fields Tasks 5-11 wire up one at a time. Minor,
-  not fixed: `mergedContactDto`'s KDoc is now half-stale (still describes
-  itself as pure field-preservation, doesn't mention it now applies real
-  edits too) — worth a touch-up once Tasks 5-11 land, not before.
-- Incident (milder than the ledger's earlier one): Task 3's implementer left
-  a stray, uncommitted *duplicate* of its own change sitting in the primary
-  checkout (`/home/yoshi/git/kypost-android`, not this worktree) on
-  `ContactEditActivity.kt`/`ContactEditActivityTest.kt` — content-identical
-  to what it correctly committed here as `8aca186`, so nothing was at risk
-  of being lost, but it had to be discarded (`git checkout --` in the
-  primary checkout) to avoid confusing a future session. No new commit
-  landed on `main` this time (unlike the earlier incident), so this is
-  narrower, but it's the third time in one plan a subagent has touched the
-  wrong checkout in some way — the harder fix noted after the first incident
-  (an explicit cwd assertion early in the dispatch prompt) is already in use
-  and didn't fully prevent this one; worth raising with the user if a fourth
-  instance occurs.
-
-- Task 4: complete (commit `262db49`). Review: spec ✅, quality Approved, no
-  Critical/Important issues. Reviewer independently re-ran
-  `processDebugResources` (not just trusting the report) and cross-checked
-  every id/string this layout produces against every reference Tasks 5-11's
-  plan text makes — all present, none misspelled. One real bug in *this
-  plan's own text* surfaced and was correctly fixed by the implementer: the
-  brief's XML declared `xmlns:app` only on the first of two sibling `Chip`
-  elements, but XML namespace declarations don't inherit across siblings —
-  the second Chip's `app:chipMinHeight`/`app:ensureMinTouchTargetSize`
-  wouldn't have resolved. Implementer added the declaration to both Chips;
-  reviewer confirmed this was necessary and correct, not scope creep. Minor,
-  not fixed: implementer's own report miscounted the string total (58
-  claimed vs. 51 actual) — narrative-only, doesn't affect shipped code.
-- This task's own build check (`processDebugResources`) intentionally
-  doesn't compile Kotlin — `ContactEditActivity.kt` now references two ids
-  this layout rewrite removed (`editContactEmail`/`editContactPhone`) and
-  won't compile again until Task 7 rewires that section. Expected, per the
-  plan's own design (each of Tasks 5-7 progressively fixes more of the
-  compile break; full green isn't expected again until Task 7's checkpoint).
-  Noting here so a resume doesn't mistake the current red Kotlin build for a
-  regression.
-
-- Task 5: complete (commit `48cb05c`). Review: spec ✅, quality Approved, no
-  Critical/Important issues. Reviewer independently re-ran
-  `compileDebugKotlin` and confirmed exactly the two expected dangling
-  errors, nothing else. Read-only enforcement on `isSelf`/`pgpKey` verified
-  both locally (no listeners on the badges) and structurally
-  (`mergedContactDto` has no parameters for either field at all — not just
-  "unused this task," architecturally unsettable from this screen). Minor,
-  not fixed (plan-mandated, i.e. my own plan text's choice, not implementer
-  error): the pgp badge uses a new string `contacts_pgp_badge_visible`
-  ("PGP key on file") instead of reusing the existing
-  `contact_status_secure_key` ("Secure key") `ContactAdapter.kt` already
-  uses for the identical concept in the contacts list — two different
-  labels for the same thing across two screens. Cosmetic only. Carry to
+- Task 2: complete (commit `f16c852`). Review: spec ✅, quality Approved.
+  One Minor, not fixed (plan-mandated, not implementer error): new keys are
+  singular `contact_sync_intro_*` vs. the cited convention's plural
+  `contacts_device_sync_*` — traces back to the plan/brief text itself, and
+  Task 4 already depends on these exact names, so not reworked. Carry to
   final whole-branch review for triage.
 
-- Task 6: complete (commit `727d699`). Review: spec ✅, quality Approved,
-  zero findings of any severity — cleanest review yet. Reviewer independently
-  re-ran `compileDebugKotlin`, confirmed exactly the two expected dangling
-  errors.
-- Incident (third occurrence, same class as before): Task 6's implementer
-  again left a stray uncommitted duplicate of its own change in the primary
-  checkout (`ContactEditActivity.kt`, 16 lines, based off the pre-Task-3
-  baseline there). Content-consistent with what it correctly committed here
-  as `727d699`; discarded via `git checkout --` in the primary checkout,
-  `main` unaffected. This is the third incident in this plan of a subagent
-  touching the wrong checkout in some way (1st: committed to main directly;
-  2nd and 3rd: stray uncommitted duplicates, no bad commit). Per this
-  ledger's own earlier note, flagging to the user is warranted at a fourth
-  occurrence — noting here that we're now at three.
+- Task 3: complete (commit `1e27b0f`). Review: spec ✅, quality Approved, no
+  Critical/Important issues. Reviewer independently confirmed
+  `DeviceContactSyncEnabler`'s two methods reproduce the original
+  `ContactsListActivity` methods call-for-call, in order, and independently
+  re-ran the "are Manifest/PackageManager/ContextCompat still used
+  elsewhere" grep against the actual file (not just trusting the report) —
+  zero matches, import removals safe. One necessary compiler-forced
+  deviation from the brief's literal code (explicit type annotation on
+  `contactPermissionLauncher` to resolve a real Kotlin circular-type-
+  inference error between it and the new `syncEnabler` property);
+  reviewer verified it's compile-time-only and behavior-neutral. On-device
+  regression check (brief Step 8) not performed — no device/emulator
+  attached in this environment; deferred to a human before finishing the
+  branch (see Notes).
 
-- Task 7: complete (commit `c69ee5d`). Review: spec ✅, quality Approved, no
-  Critical/Important issues — no wrong-checkout incident this time either.
-  This is the first task where `RepeatableFieldList` is actually used in
-  production code and the first full-green compile checkpoint since Task
-  4's layout rewrite; reviewer independently re-ran `compileDebugKotlin`
-  (zero errors) and specifically re-verified the shared-`emit`-lambda
-  closure fix was correctly applied to both `emailList` and `phoneList` (not
-  reverted to the earlier-caught buggy two-separate-closures pattern) —
-  quoted the exact lines for both. `isBlank` (AND across both sub-fields,
-  not OR) confirmed correct for both lists. Implementer independently ran
-  the full contacts-package instrumented suite: 9/9 passing. Minor, not
-  fixed: class-level KDoc above `ContactEditActivity` is now stale (still
-  describes the old single-value-with-overflow-preservation behavior this
-  task replaced). Carry to final whole-branch review.
-
-- Task 8: complete (commit `be46077`). Review: spec ✅, quality Approved,
-  zero findings of any severity. No wrong-checkout incident. This row has
-  six fields (vs. two for emails/phones), so the reviewer specifically
-  checked the shared-`emit` closure spans all six, not just some —
-  confirmed correct, all six `TextWatcher`s reference the same closure
-  instance. `isBlank` correctly ANDs all six `isNullOrBlank()` checks.
-  Independent `compileDebugKotlin` re-run: `BUILD SUCCESSFUL`.
-
-- Task 9: complete (commit `223cf86`). Review: spec ✅, quality Approved,
-  zero findings. No wrong-checkout incident. First 3-field row in the
-  branch (IMs: service/label/value) — reviewer confirmed the shared-`emit`
-  pattern generalized correctly to all three fields, quoted in full. Both
-  lists (websites, IMs) correctly sum into one `sectionOnline` item count
-  from both lists' `onChanged` callbacks. Independent `compileDebugKotlin`
-  re-run: `BUILD SUCCESSFUL`.
-
-- Task 10: complete (commit `281613f`). Review: spec ✅, quality Approved,
-  zero findings — the most delicate remaining task (date-picker-via-shared-
-  closure for the events row) came through clean. Reviewer specifically
-  quoted `wireDatePicker` and confirmed `field.setText(formatted)` runs
-  before `onPicked(formatted)`, which is what makes the events row's
-  `wireDatePicker(dateField) { emit() }` safe (not an isolated
-  `item.copy(date = picked)`, which would have reintroduced the
-  stale-closure bug in a new shape). Confirmed no manual-date-entry path
-  exists anywhere (both date fields non-focusable/clickable-only, no
-  TextWatcher on either). `ContactRelationDto.name`/`ContactEventDto.date`
-  non-nullable handling correctly distinguished from nullable `label`.
-  Independent `compileDebugKotlin` re-run: `BUILD SUCCESSFUL`.
-
-- **Incident (4th occurrence, worst so far): Task 11's first implementer
-  committed a BROKEN (non-compiling) change to `main` in the primary
-  checkout.** 141 tool calls / ~900s, self-reported a syntax error it
-  couldn't resolve, and the resulting commit (`528617d`, later confirmed
-  442 insertions vs. the brief's ~35-line scope — evidence of a confused
-  edit loop, not a clean implementation) landed on `main`, not this
-  worktree. Caught immediately: `main` reset back to `b0db7a1` (same
-  recovery as incident #1; the broken commit object still exists in the
-  shared git object store but is unreachable from any branch now). This
-  worktree's own `ContactEditActivity.kt` was untouched by the failure —
-  HEAD stayed at `c0c419e`, compiling clean, as if Task 11 had never been
-  attempted here. Per this ledger's own stated threshold ("worth raising
-  with the user if a fourth instance occurs"), flagged to the user
-  directly; user chose to continue rather than pause for root-cause
-  investigation. Task 11 was then redispatched fresh (see below) and
-  succeeded cleanly on the first correct attempt.
-- Task 11: complete (commit `6bff9b9`, second attempt). Review: spec ✅,
-  quality Approved, zero findings. Diff is 35/-1 lines, matching the
-  brief's own size estimate — explicitly confirmed by the reviewer as NOT a
-  repeat of the first attempt's 442-line mess. This is the LAST field
-  (`customFields`) that had been a Task-3 placeholder; reviewer inspected
-  `save()`'s full `mergedContactDto(...)` call end-to-end and confirmed
-  literally every argument now reads from real UI state — no `null`/
-  `emptyList()` placeholders remain anywhere. `ContactCustomFieldDto.label`
-  (non-nullable, unlike every other list DTO's label) correctly handled
-  without the `.ifBlank { null }` pattern used everywhere else. Independent
-  `compileDebugKotlin` re-run: `BUILD SUCCESSFUL`. **All 11 coding tasks in
-  this plan are now complete; only Task 12 (manual on-device verification)
-  remains before the final whole-branch review.**
-
-- Task 12: complete. Manual on-device verification via `installDebug` + a
-  real contact created/edited across three rounds on the user's phone
-  (uid `99449498-278c-4bdb-b063-ddc3a50aa24b`, "test person"). No crashes
-  in any round (checked logcat's `AndroidRuntime: FATAL`/`urlxl.*Exception`
-  each time). Confirmed via direct SQLite inspection of the device's Room
-  DB, not just visual inspection: name parts (given/family/middle/prefix/
-  suffix/nickname/phonetic given+family/pronouns), Work (title; department
-  intentionally skipped by the user, see below), two emails and two phones
-  with labels, a full 6-field address with label, a website, an IM (all 3
-  fields), birthday via the date picker, one event (label + date picker),
-  one relation, notes, and one custom field all round-tripped correctly
-  across edits without data loss. `department` and a second custom-field
-  row were deliberately left unfilled by the user in the final round (not a
-  bug — both use patterns, plain-EditText and repeatable-row-add, already
-  proven correct by structurally identical fields — `title` and the second
-  phone/relation/event rows — in the same test session), so verification
-  was judged sufficient without a further round. **This closes out the
-  implementation plan — all 12 tasks complete.**
+- Task 4: complete (commit `4e352e5`). Review: spec ✅, quality Approved, no
+  Critical/Important issues. This is the task with the plan's one subtle
+  correctness property — `scanQr()` must fire exactly once per popup
+  interaction, never from both the positive-button handler and the
+  permission-launcher callback in the async-permission path. Reviewer
+  traced all four interaction paths (sync-enable, async-enable, Not Now,
+  cancel) directly against the diff and confirmed each fires `scanQr()`
+  exactly once, with `setHasShownSyncIntro(true)` firing once per path via
+  `setOnDismissListener`; also independently re-read
+  `DeviceContactSyncEnabler.checkAndEnable()` (Task 3) to confirm its
+  `Boolean` return semantics matched what this task's logic assumes. Same
+  compiler-forced type-annotation deviation as Task 3 (circular type
+  inference between `contactPermissionLauncher` and `syncEnabler`),
+  verified necessary/inert against Task 3's identical precedent. On-device
+  regression check not performed — no device attached; deferred to a human
+  (see Notes). **All 4 coding tasks in this plan are now complete.**
 
 ## Final Whole-Branch Review
 
-Ready to merge: Yes. Reviewer (opus) independently re-derived the branch's
-one load-bearing correctness property — every repeatable row's field
-watchers (and, for events, its DatePickerDialog callback) wired to a single
-shared closure reading all of that row's fields live, never per-field
-isolated closures — by quoting and re-verifying the actual wiring code for
-addresses (6 fields), events (label + date-picker), and IMs (3 fields)
-directly, rather than trusting the 9 prior per-task reviews that had already
-each confirmed it. Confirmed no Room/schema changes (UI-only branch, as
-intended), confirmed `photoRef`/`groupIDs`/`isSelf`/`pgpKey` are
-architecturally unsettable (never `mergedContactDto` parameters, survive
-only via `.copy()`), confirmed no regression of the original data-loss bug
-this whole feature sits on top of (still `.copy()`, never a fresh
-`ContactDto(...)`). No Critical or Important issues. All six Minor items
-carried forward from per-task reviews were re-triaged at the whole-branch
-level and confirmed still non-blocking; reviewer specifically recommended
-fixing the two stale KDoc comments (class-level doc on `ContactEditActivity`
-and on `mergedContactDto`, both still describing pre-plan single-value
-behavior) as a quick pre-merge polish since they're the only two that could
-actively mislead a future reader — applied directly, commit `5bbbaee`.
-Remaining four Minor items (two unused test-only string resources, one
-under-named test, missing dedicated tests for `setTitle`/`setItemCount` and
-multi-child `onFinishInflate` ordering, one cosmetic PGP-badge wording
-inconsistency between the contacts list and this editor) left as-is —
-explicitly judged cosmetic/non-blocking by both the per-task and
-whole-branch reviews.
+Ready to merge (code): Yes. Release gated on one outstanding item (see below).
+Reviewer (opus) independently re-traced all four `scanQr()` call sites across
+the full branch diff (not just trusting the four per-task reviews) and
+confirmed the sequencing property holds end-to-end: every path (sync-enable,
+async-enable, Not Now, cancel) reaches the scanner exactly once, with
+`setOnDismissListener` as the sole writer of `hasShownSyncIntro`. Confirmed
+`DeviceContactSyncEnabler`'s `AppCompatActivity` reference is lifecycle-safe
+(no leak — same lifecycle as the coroutine scope it launches on), confirmed
+`ContactsListActivity`'s menu toggle is behavior-neutral after the Task 3
+refactor (`invalidateOptionsMenu()` relocated to the `onEnabled` callback at
+the same call point), confirmed the same circular-type-inference compiler
+fix applied independently in Tasks 3 and 4 is a consistent, inherent
+consequence of the launcher↔enabler mutual-reference pattern, not a design
+smell. No Critical or Important code issues.
 
-**Branch is ready for `superpowers:finishing-a-development-branch`.**
+**Outstanding item (release-gating, not merge-blocking):** no on-device or
+emulator verification has been performed anywhere in this branch — no
+device was available in this environment for any of the 4 tasks. All builds
+pass (`compileDebugKotlin`/`processDebugResources`/`assembleDebug`), but the
+plan's own Testing section calls for a real device pass. **Before this
+branch is considered done, a human needs to run:** Task 3 Step 8 (Contacts-
+screen device-sync toggle regression) and Task 4 Step 6 (fresh-install
+pairing-screen popup walkthrough — Enable/grant, Not Now, cancel, and
+confirm the popup never reappears after any of those).
+
+Four Minor items surfaced, none requiring code changes: (1) singular
+`contact_sync_intro_*` vs. plural `contacts_device_sync_*` string-key
+convention — plan-mandated, cosmetic; (2) if the dialog is dismissed by a
+config change (e.g. rotation) rather than a button/cancel, the flag is
+still marked seen but `scanQr()` never fires that time — user just taps
+"Scan QR" again and goes straight to the scanner; benign, no code change
+recommended; (3) killing the app mid-permission-prompt after tapping
+"Enable" marks the intro seen without enabling sync — acceptable, matches
+"shown once per install" semantics, feature still reachable from the
+Contacts menu; (4) minor import-ordering nit in `PushPairingActivity.kt`
+(cosmetic, no ktlint enforcement in this repo).
+
+**Branch is code-ready for `superpowers:finishing-a-development-branch`,
+but the on-device smoke test above should happen first — flagging to the
+user rather than proceeding straight to merge.**
