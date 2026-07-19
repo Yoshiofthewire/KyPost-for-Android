@@ -46,3 +46,18 @@
   correct, just stale terminology, outside this task's mandated scope).
 - Task 6: complete (commits 7364fd8..d744408, review clean, no findings —
   fetchKey independently confirmed untouched). **All 6 coding tasks complete.**
+
+## Final Whole-Branch Review
+
+Ready to merge: With fixes. Reviewer (opus) independently re-audited all
+17 production call sites for stray sub/hash query params (grep returned
+zero matches), confirmed PullSyncCoordinator.kt untouched and still
+compiles against the widened PullNotificationClient constructor, confirmed
+fetchKey/MfaResponseClient/NativeRegistrationClient completely untouched,
+and confirmed no credential-leak path remains anywhere in app/src/main.
+One recommended fix: stale "sub/hash" terminology in
+PullNotificationClient.kt (kdoc line 21 + runtime message line 76) — fixed
+as a 7th commit (47f6cd7), controller-verified independently (grep zero
+matches, build clean, commit touches exactly the intended file). Import-
+ordering Minor in ContactSyncClientTest.kt left as-is per reviewer's
+explicit ruling (cosmetic, unenforced by tooling).
