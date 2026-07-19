@@ -29,5 +29,7 @@ deletion logic itself (`delete()` in `ContactEditActivity.kt`), only to how it's
   consistently inlines `AlertDialog.Builder` at each call site, so this follows suit.
 
 ## Testing
-Update/add a test in `ContactEditActivityTest.kt` asserting the dialog appears on tap
-and that the underlying delete flow only fires after confirming.
+`ContactEditActivityTest.kt` only covers the pure `mergedContactDto` function; there's
+no Robolectric or instrumented Activity test infrastructure in this codebase to assert
+dialog behavior against. Verification for this change is manual: build, run, and
+exercise the delete button on an existing contact.
