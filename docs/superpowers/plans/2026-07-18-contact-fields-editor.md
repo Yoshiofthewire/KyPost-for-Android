@@ -165,6 +165,7 @@ package com.urlxl.mail.contacts
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import androidx.core.widget.doAfterTextChanged
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -264,7 +265,7 @@ class RepeatableFieldListTest {
 }
 ```
 
-This test uses `androidx.core.widget.doAfterTextChanged` — confirm the `androidx.core:core-ktx` dependency (already used elsewhere in this codebase, e.g. `ContactEditActivity`'s existing `TextWatcher` usage could be replaced by it, but that's out of scope here) is on the `androidTestImplementation`/`implementation` classpath by checking `app/build.gradle.kts` for `androidx.core:core-ktx`; if absent, add `import android.text.Editable` / `android.text.TextWatcher` and use the verbose form instead (matching `ContactEditActivity.kt`'s existing `fnField.addTextChangedListener(object : TextWatcher { ... })` pattern) — do not add a new dependency for this.
+This test uses `androidx.core.widget.doAfterTextChanged` (imported above) — `androidx.core:core-ktx` is already on the `implementation` classpath (`app/build.gradle.kts:108`), which `androidTestImplementation` inherits, so no dependency changes are needed. `ContactEditActivity.kt`'s own production code keeps its existing verbose `TextWatcher` pattern unchanged (Tasks 7/8/9/10/11 add a small shared `SimpleTextWatcher` helper for that, not `doAfterTextChanged` — see Task 7) — this test's use of the ktx extension is local to the test file only.
 
 - [ ] **Step 5: Run the test to verify it passes**
 
@@ -417,11 +418,13 @@ class ExpandableSectionView @JvmOverloads constructor(
 // app/src/androidTest/java/com/urlxl/mail/contacts/ExpandableSectionViewTest.kt
 package com.urlxl.mail.contacts
 
+import android.view.ContextThemeWrapper
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.urlxl.mail.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -431,7 +434,15 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ExpandableSectionViewTest {
 
-    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    // The header layout references ?attr/selectableItemBackground (view_expandable_section_header.xml),
+    // an AppCompat/MaterialComponents theme attribute. The bare instrumentation targetContext isn't
+    // themed (it resolves to the plain framework theme), so it fails to inflate with
+    // "Failed to resolve attribute" — wrap it in the app's real theme, exactly like every Activity in
+    // this app gets via the manifest's android:theme="@style/Theme.LlamaMailForAndroid".
+    private val context = ContextThemeWrapper(
+        InstrumentationRegistry.getInstrumentation().targetContext,
+        R.style.Theme_LlamaMailForAndroid,
+    )
 
     @Test
     fun startsCollapsed_bodyGoneUntilExpanded() {
