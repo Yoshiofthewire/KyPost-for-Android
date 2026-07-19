@@ -18,7 +18,7 @@ sealed class PullResult {
     /** 401: bad hash / unknown subscriber. Credentials are wrong — stop hammering. */
     data class Unauthorized(val message: String) : PullResult()
 
-    /** 400: missing sub/hash. A client bug; don't tight-loop. */
+    /** 400: missing pairing credentials. A client bug; don't tight-loop. */
     data class BadRequest(val message: String) : PullResult()
 
     /**
@@ -73,7 +73,7 @@ class PullNotificationClient(
                     ?: return PullResult.Retryable("Malformed pull response")
                 PullResult.Success(body)
             }
-            400 -> PullResult.BadRequest("Missing sub/hash")
+            400 -> PullResult.BadRequest("Missing pairing credentials")
             401 -> PullResult.Unauthorized("Bad hash or unknown subscriber")
             else -> PullResult.Retryable(
                 message = "Pull failed ($code)",
