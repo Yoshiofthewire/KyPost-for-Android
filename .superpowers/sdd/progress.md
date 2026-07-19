@@ -245,3 +245,33 @@
   phone/relation/event rows — in the same test session), so verification
   was judged sufficient without a further round. **This closes out the
   implementation plan — all 12 tasks complete.**
+
+## Final Whole-Branch Review
+
+Ready to merge: Yes. Reviewer (opus) independently re-derived the branch's
+one load-bearing correctness property — every repeatable row's field
+watchers (and, for events, its DatePickerDialog callback) wired to a single
+shared closure reading all of that row's fields live, never per-field
+isolated closures — by quoting and re-verifying the actual wiring code for
+addresses (6 fields), events (label + date-picker), and IMs (3 fields)
+directly, rather than trusting the 9 prior per-task reviews that had already
+each confirmed it. Confirmed no Room/schema changes (UI-only branch, as
+intended), confirmed `photoRef`/`groupIDs`/`isSelf`/`pgpKey` are
+architecturally unsettable (never `mergedContactDto` parameters, survive
+only via `.copy()`), confirmed no regression of the original data-loss bug
+this whole feature sits on top of (still `.copy()`, never a fresh
+`ContactDto(...)`). No Critical or Important issues. All six Minor items
+carried forward from per-task reviews were re-triaged at the whole-branch
+level and confirmed still non-blocking; reviewer specifically recommended
+fixing the two stale KDoc comments (class-level doc on `ContactEditActivity`
+and on `mergedContactDto`, both still describing pre-plan single-value
+behavior) as a quick pre-merge polish since they're the only two that could
+actively mislead a future reader — applied directly, commit `5bbbaee`.
+Remaining four Minor items (two unused test-only string resources, one
+under-named test, missing dedicated tests for `setTitle`/`setItemCount` and
+multi-child `onFinishInflate` ordering, one cosmetic PGP-badge wording
+inconsistency between the contacts list and this editor) left as-is —
+explicitly judged cosmetic/non-blocking by both the per-task and
+whole-branch reviews.
+
+**Branch is ready for `superpowers:finishing-a-development-branch`.**
