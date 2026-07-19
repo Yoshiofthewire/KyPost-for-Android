@@ -50,6 +50,8 @@ class ContactEditActivity : AppCompatActivity() {
     private lateinit var emailList: RepeatableFieldList<ContactFieldDto>
     private lateinit var phoneList: RepeatableFieldList<ContactFieldDto>
     private lateinit var addressList: RepeatableFieldList<ContactAddressDto>
+    private lateinit var websiteList: RepeatableFieldList<ContactUrlDto>
+    private lateinit var imList: RepeatableFieldList<ContactImDto>
 
     private var existingUid: String = ""
     private var existingRev: Long = 0
@@ -200,6 +202,67 @@ class ContactEditActivity : AppCompatActivity() {
             default = { ContactAddressDto() },
             onChanged = { findViewById<ExpandableSectionView>(R.id.sectionAddresses).setItemCount(addressList.items().size) },
         )
+        findViewById<ExpandableSectionView>(R.id.sectionOnline).setTitle(getString(R.string.contacts_section_online))
+        websiteList = RepeatableFieldList(
+            container = findViewById(R.id.websiteRowsContainer),
+            addButton = findViewById(R.id.btnAddWebsite),
+            rowLayoutRes = R.layout.row_contact_two_field,
+            removeButtonId = R.id.rowFieldRemove,
+            bind = { rowView, item, onItemChanged ->
+                val labelField = rowView.findViewById<EditText>(R.id.rowFieldA)
+                val valueField = rowView.findViewById<EditText>(R.id.rowFieldB)
+                labelField.hint = getString(R.string.contacts_website_row_label_hint)
+                valueField.hint = getString(R.string.contacts_website_row_value_hint)
+                valueField.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+                labelField.setText(item.label.orEmpty())
+                valueField.setText(item.value)
+                val emit: () -> Unit = {
+                    onItemChanged(
+                        item.copy(
+                            label = labelField.text.toString().trim().ifBlank { null },
+                            value = valueField.text.toString().trim(),
+                        ),
+                    )
+                }
+                labelField.addTextChangedListener(SimpleTextWatcher(emit))
+                valueField.addTextChangedListener(SimpleTextWatcher(emit))
+            },
+            isBlank = { it.label.isNullOrBlank() && it.value.isBlank() },
+            default = { ContactUrlDto() },
+            onChanged = { findViewById<ExpandableSectionView>(R.id.sectionOnline).setItemCount(websiteList.items().size + imList.items().size) },
+        )
+        imList = RepeatableFieldList(
+            container = findViewById(R.id.imRowsContainer),
+            addButton = findViewById(R.id.btnAddIm),
+            rowLayoutRes = R.layout.row_contact_im,
+            removeButtonId = R.id.rowImRemove,
+            bind = { rowView, item, onItemChanged ->
+                val serviceField = rowView.findViewById<EditText>(R.id.rowImService)
+                val labelField = rowView.findViewById<EditText>(R.id.rowImLabel)
+                val valueField = rowView.findViewById<EditText>(R.id.rowImValue)
+                serviceField.hint = getString(R.string.contacts_im_service_hint)
+                labelField.hint = getString(R.string.contacts_im_label_hint)
+                valueField.hint = getString(R.string.contacts_im_value_hint)
+                serviceField.setText(item.service.orEmpty())
+                labelField.setText(item.label.orEmpty())
+                valueField.setText(item.value)
+                val emit: () -> Unit = {
+                    onItemChanged(
+                        item.copy(
+                            service = serviceField.text.toString().trim().ifBlank { null },
+                            label = labelField.text.toString().trim().ifBlank { null },
+                            value = valueField.text.toString().trim(),
+                        ),
+                    )
+                }
+                serviceField.addTextChangedListener(SimpleTextWatcher(emit))
+                labelField.addTextChangedListener(SimpleTextWatcher(emit))
+                valueField.addTextChangedListener(SimpleTextWatcher(emit))
+            },
+            isBlank = { it.service.isNullOrBlank() && it.label.isNullOrBlank() && it.value.isBlank() },
+            default = { ContactImDto() },
+            onChanged = { findViewById<ExpandableSectionView>(R.id.sectionOnline).setItemCount(websiteList.items().size + imList.items().size) },
+        )
         saveButton = findViewById(R.id.btnSaveContact)
         deleteButton = findViewById(R.id.btnDeleteContact)
 
@@ -274,6 +337,10 @@ class ContactEditActivity : AppCompatActivity() {
             addressList.setItems(dto.addresses)
             findViewById<ExpandableSectionView>(R.id.sectionAddresses).setExpanded(dto.addresses.isNotEmpty())
             findViewById<ExpandableSectionView>(R.id.sectionAddresses).setItemCount(dto.addresses.size)
+            websiteList.setItems(dto.websites)
+            imList.setItems(dto.ims)
+            findViewById<ExpandableSectionView>(R.id.sectionOnline).setExpanded(dto.websites.isNotEmpty() || dto.ims.isNotEmpty())
+            findViewById<ExpandableSectionView>(R.id.sectionOnline).setItemCount(dto.websites.size + dto.ims.size)
         }
     }
 
@@ -302,8 +369,8 @@ class ContactEditActivity : AppCompatActivity() {
             emails = emailList.items(),
             phones = phoneList.items(),
             addresses = addressList.items(),
-            ims = emptyList(),
-            websites = emptyList(),
+            websites = websiteList.items(),
+            ims = imList.items(),
             relations = emptyList(),
             events = emptyList(),
             phoneticGivenName = phoneticGivenNameField.text.toString().trim().ifBlank { null },
