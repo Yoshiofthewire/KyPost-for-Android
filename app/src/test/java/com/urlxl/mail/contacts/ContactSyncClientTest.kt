@@ -1,5 +1,7 @@
 package com.urlxl.mail.contacts
 
+import com.urlxl.mail.HEADER_SUBSCRIBER_ID
+import com.urlxl.mail.HEADER_SUBSCRIBER_HASH
 import kotlinx.coroutines.runBlocking
 import okhttp3.Call
 import okhttp3.Callback
@@ -10,6 +12,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Timeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -86,8 +89,10 @@ class ContactSyncClientTest {
 
         val sentRequest = callFactory.requests.single()
         assertEquals("https://relay.example.com/api/contacts/dedupe", sentRequest.url.newBuilder().query(null).build().toString())
-        assertEquals("sub-1", sentRequest.url.queryParameter("sub"))
-        assertEquals("hash-1", sentRequest.url.queryParameter("hash"))
+        assertEquals("sub-1", sentRequest.header(HEADER_SUBSCRIBER_ID))
+        assertEquals("hash-1", sentRequest.header(HEADER_SUBSCRIBER_HASH))
+        assertNull(sentRequest.url.queryParameter("sub"))
+        assertNull(sentRequest.url.queryParameter("hash"))
         assertEquals("POST", sentRequest.method)
     }
 
@@ -173,5 +178,37 @@ class ContactSyncClientTest {
 
         val body = callFactory.requests.single().body
         assertEquals(0L, body?.contentLength())
+    }
+
+    @Test
+    fun pull_200_sendsPairingHeaders_notQueryParams() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "{}", 200) }
+        val client = ContactSyncClient(callFactory = callFactory)
+
+        val result = client.pull("https://relay.example.com", "sub-1", "hash-1", since = 0L)
+
+        assertTrue(result is ContactSyncResult.Success)
+        val sentRequest = callFactory.requests.single()
+        assertEquals("sub-1", sentRequest.header(HEADER_SUBSCRIBER_ID))
+        assertEquals("hash-1", sentRequest.header(HEADER_SUBSCRIBER_HASH))
+        assertNull(sentRequest.url.queryParameter("sub"))
+        assertNull(sentRequest.url.queryParameter("hash"))
+        assertEquals("0", sentRequest.url.queryParameter("since"))
+    }
+
+    @Test
+    fun push_200_sendsPairingHeaders_notQueryParams() = runBlocking {
+        val callFactory = FakeCallFactory { request -> response(request, "{}", 200) }
+        val client = ContactSyncClient(callFactory = callFactory)
+
+        val result = client.push("https://relay.example.com", "sub-1", "hash-1", baseCursor = 0L, changes = emptyList())
+
+        assertTrue(result is ContactSyncResult.Success)
+        val sentRequest = callFactory.requests.single()
+        assertEquals("sub-1", sentRequest.header(HEADER_SUBSCRIBER_ID))
+        assertEquals("hash-1", sentRequest.header(HEADER_SUBSCRIBER_HASH))
+        assertNull(sentRequest.url.queryParameter("sub"))
+        assertNull(sentRequest.url.queryParameter("hash"))
+        assertEquals("POST", sentRequest.method)
     }
 }

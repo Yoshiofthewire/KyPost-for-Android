@@ -1,6 +1,7 @@
 package com.urlxl.mail.contacts
 
 import com.urlxl.mail.executeSync
+import com.urlxl.mail.pairingAuthHeaders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
@@ -40,8 +41,9 @@ private sealed class HttpMappedResult<out T> {
 }
 
 /**
- * Talks to `/api/contacts/sync`. Auth is `sub`/`hash` query params only (never headers/cookies),
- * kept parallel to [com.urlxl.mail.push.PullNotificationClient] — same okhttp/serialization stack.
+ * Talks to `/api/contacts/sync`. Auth is sent as X-Kypost-Subscriber-Id/X-Kypost-Subscriber-Hash
+ * headers (never query params/cookies), kept parallel to
+ * [com.urlxl.mail.push.PullNotificationClient] — same okhttp/serialization stack.
  */
 class ContactSyncClient(
     private val json: Json = Json { ignoreUnknownKeys = true },
@@ -53,11 +55,12 @@ class ContactSyncClient(
     suspend fun pull(serverUrl: String, subscriberId: String, subscriberHash: String, since: Long): ContactSyncResult {
         val base = syncUrl(serverUrl) ?: return ContactSyncResult.BadRequest("Server URL is not valid")
         val url = base.newBuilder()
-            .addQueryParameter("sub", subscriberId)
-            .addQueryParameter("hash", subscriberHash)
             .addQueryParameter("since", since.coerceAtLeast(0L).toString())
             .build()
-        return execute(Request.Builder().url(url).get().build())
+        val request = Request.Builder().url(url).get()
+            .pairingAuthHeaders(subscriberId, subscriberHash)
+            .build()
+        return execute(request)
     }
 
     suspend fun push(
@@ -68,22 +71,18 @@ class ContactSyncClient(
         changes: List<ContactDto>,
     ): ContactSyncResult {
         val base = syncUrl(serverUrl) ?: return ContactSyncResult.BadRequest("Server URL is not valid")
-        val url = base.newBuilder()
-            .addQueryParameter("sub", subscriberId)
-            .addQueryParameter("hash", subscriberHash)
-            .build()
         val body = json.encodeToString(ContactSyncPushRequestDto(baseCursor = baseCursor, changes = changes))
-        val request = Request.Builder().url(url).post(body.toRequestBody(JSON_MEDIA_TYPE)).build()
+        val request = Request.Builder().url(base).post(body.toRequestBody(JSON_MEDIA_TYPE))
+            .pairingAuthHeaders(subscriberId, subscriberHash)
+            .build()
         return execute(request)
     }
 
     suspend fun dedupe(serverUrl: String, subscriberId: String, subscriberHash: String): ContactDedupeResult {
         val base = dedupeUrl(serverUrl) ?: return ContactDedupeResult.BadRequest("Server URL is not valid")
-        val url = base.newBuilder()
-            .addQueryParameter("sub", subscriberId)
-            .addQueryParameter("hash", subscriberHash)
+        val request = Request.Builder().url(base).post("".toRequestBody(JSON_MEDIA_TYPE))
+            .pairingAuthHeaders(subscriberId, subscriberHash)
             .build()
-        val request = Request.Builder().url(url).post("".toRequestBody(JSON_MEDIA_TYPE)).build()
         return when (
             val mapped = executeMapped(
                 request = request,
