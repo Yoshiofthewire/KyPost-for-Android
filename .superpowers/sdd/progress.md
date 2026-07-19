@@ -9,7 +9,7 @@
 
 - [x] Task 1: `RepeatableFieldList<T>` generic component
 - [x] Task 2: `ExpandableSectionView` collapsible container
-- [ ] Task 3: Extend `mergedContactDto` for every newly-editable field
+- [x] Task 3: Extend `mergedContactDto` for every newly-editable field
 - [ ] Task 4: Rewrite `activity_contact_edit.xml` with all sections
 - [ ] Task 5: Wire Name section + read-only `isSelf`/`pgpKey` badges
 - [ ] Task 6: Wire Work section
@@ -78,3 +78,25 @@
   have no dedicated test coverage, one redundant cast in the test file, the
   multi-child-order-preservation path in `onFinishInflate` is only exercised
   with a single child. Carry to final whole-branch review for triage.
+
+- Task 3: complete (commit `8aca186`). Review: spec ✅, quality Approved, no
+  Critical/Important issues. `mergedContactDto` grew from 8 to 26 params,
+  every one correctly threaded signature→`.copy()` with matching names;
+  `save()`'s call site correctly left the brief-blessed `null`/`emptyList()`
+  placeholders for the 18 fields Tasks 5-11 wire up one at a time. Minor,
+  not fixed: `mergedContactDto`'s KDoc is now half-stale (still describes
+  itself as pure field-preservation, doesn't mention it now applies real
+  edits too) — worth a touch-up once Tasks 5-11 land, not before.
+- Incident (milder than the ledger's earlier one): Task 3's implementer left
+  a stray, uncommitted *duplicate* of its own change sitting in the primary
+  checkout (`/home/yoshi/git/kypost-android`, not this worktree) on
+  `ContactEditActivity.kt`/`ContactEditActivityTest.kt` — content-identical
+  to what it correctly committed here as `8aca186`, so nothing was at risk
+  of being lost, but it had to be discarded (`git checkout --` in the
+  primary checkout) to avoid confusing a future session. No new commit
+  landed on `main` this time (unlike the earlier incident), so this is
+  narrower, but it's the third time in one plan a subagent has touched the
+  wrong checkout in some way — the harder fix noted after the first incident
+  (an explicit cwd assertion early in the dispatch prompt) is already in use
+  and didn't fully prevent this one; worth raising with the user if a fourth
+  instance occurs.
