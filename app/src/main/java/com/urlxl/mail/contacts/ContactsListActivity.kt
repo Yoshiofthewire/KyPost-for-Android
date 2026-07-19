@@ -1,15 +1,12 @@
 package com.urlxl.mail.contacts
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -24,6 +21,7 @@ import com.urlxl.mail.applyThemeToActivity
 import com.urlxl.mail.applyThemedTitle
 import com.urlxl.mail.applyTopInsetWithHeader
 import com.urlxl.mail.contacts.device.DeviceContactsRuntime
+import com.urlxl.mail.contacts.device.DeviceContactSyncEnabler
 import com.urlxl.mail.contacts.device.DeviceContactSyncScheduler
 import com.urlxl.mail.data.ContactEntity
 import kotlinx.coroutines.launch
@@ -34,7 +32,7 @@ class ContactsListActivity : AppCompatActivity() {
     private lateinit var emptyText: View
     private lateinit var adapter: ContactAdapter
     private var pickMode: Boolean = false
-    private val contactPermissionLauncher = registerForActivityResult(
+    private val contactPermissionLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>> = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
         val allGranted = permissions.all { it.value }
@@ -42,8 +40,13 @@ class ContactsListActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.contacts_device_sync_permission_denied, Toast.LENGTH_SHORT).show()
             return@registerForActivityResult
         }
-        enableDeviceSyncAfterPermissionGrant()
+        syncEnabler.enableAfterPermissionGrant()
     }
+    private val syncEnabler = DeviceContactSyncEnabler(
+        activity = this,
+        permissionLauncher = contactPermissionLauncher,
+        onEnabled = { invalidateOptionsMenu() },
+    )
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -180,7 +183,7 @@ class ContactsListActivity : AppCompatActivity() {
                 if (graph.settings.isEnabled()) {
                     disableDeviceSync()
                 } else {
-                    checkAndEnableDeviceSync()
+                    syncEnabler.checkAndEnable()
                 }
                 true
             }
@@ -206,53 +209,6 @@ class ContactsListActivity : AppCompatActivity() {
                 true
             }
             else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-    private fun checkAndEnableDeviceSync() {
-        val readContactsGranted = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.READ_CONTACTS,
-        ) == PackageManager.PERMISSION_GRANTED
-        val writeContactsGranted = ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.WRITE_CONTACTS,
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (readContactsGranted && writeContactsGranted) {
-            enableDeviceSyncAfterPermissionGrant()
-        } else {
-            contactPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.READ_CONTACTS,
-                    Manifest.permission.WRITE_CONTACTS,
-                ),
-            )
-        }
-    }
-
-    private fun enableDeviceSyncAfterPermissionGrant() {
-        val graph = DeviceContactsRuntime.graph(this)
-        lifecycleScope.launch {
-            try {
-                graph.accountManager.ensureAccount()
-                graph.settings.setEnabled(true)
-                graph.observer.register()
-                DeviceContactSyncScheduler.ensurePeriodic(this@ContactsListActivity)
-                graph.coordinator.syncNowAsync()
-                Toast.makeText(
-                    this@ContactsListActivity,
-                    R.string.contacts_device_sync_enabled_toast,
-                    Toast.LENGTH_SHORT,
-                ).show()
-                invalidateOptionsMenu()
-            } catch (e: Exception) {
-                Toast.makeText(
-                    this@ContactsListActivity,
-                    "Failed to enable device sync: ${e.message}",
-                    Toast.LENGTH_SHORT,
-                ).show()
-            }
         }
     }
 
