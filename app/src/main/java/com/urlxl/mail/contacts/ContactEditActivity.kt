@@ -56,6 +56,7 @@ class ContactEditActivity : AppCompatActivity() {
     private var birthdayValue: String? = null
     private lateinit var eventList: RepeatableFieldList<ContactEventDto>
     private lateinit var relationList: RepeatableFieldList<ContactRelationDto>
+    private lateinit var customFieldList: RepeatableFieldList<ContactCustomFieldDto>
 
     private var existingUid: String = ""
     private var existingRev: Long = 0
@@ -328,6 +329,35 @@ class ContactEditActivity : AppCompatActivity() {
             default = { ContactRelationDto() },
             onChanged = { findViewById<ExpandableSectionView>(R.id.sectionPersonal).setItemCount(eventList.items().size + relationList.items().size) },
         )
+        findViewById<ExpandableSectionView>(R.id.sectionNotes).setTitle(getString(R.string.contacts_section_notes))
+        findViewById<ExpandableSectionView>(R.id.sectionOther).setTitle(getString(R.string.contacts_section_other))
+        customFieldList = RepeatableFieldList(
+            container = findViewById(R.id.customFieldRowsContainer),
+            addButton = findViewById(R.id.btnAddCustomField),
+            rowLayoutRes = R.layout.row_contact_two_field,
+            removeButtonId = R.id.rowFieldRemove,
+            bind = { rowView, item, onItemChanged ->
+                val labelField = rowView.findViewById<EditText>(R.id.rowFieldA)
+                val valueField = rowView.findViewById<EditText>(R.id.rowFieldB)
+                labelField.hint = getString(R.string.contacts_customfield_row_label_hint)
+                valueField.hint = getString(R.string.contacts_customfield_row_value_hint)
+                labelField.setText(item.label)
+                valueField.setText(item.value)
+                val emit: () -> Unit = {
+                    onItemChanged(
+                        item.copy(
+                            label = labelField.text.toString().trim(),
+                            value = valueField.text.toString().trim(),
+                        ),
+                    )
+                }
+                labelField.addTextChangedListener(SimpleTextWatcher(emit))
+                valueField.addTextChangedListener(SimpleTextWatcher(emit))
+            },
+            isBlank = { it.label.isBlank() && it.value.isBlank() },
+            default = { ContactCustomFieldDto() },
+            onChanged = { findViewById<ExpandableSectionView>(R.id.sectionOther).setItemCount(customFieldList.items().size) },
+        )
         saveButton = findViewById(R.id.btnSaveContact)
         deleteButton = findViewById(R.id.btnDeleteContact)
 
@@ -410,6 +440,10 @@ class ContactEditActivity : AppCompatActivity() {
             birthdayField.setText(dto.birthday.orEmpty())
             eventList.setItems(dto.events)
             relationList.setItems(dto.relations)
+            findViewById<ExpandableSectionView>(R.id.sectionNotes).setExpanded(!dto.notes.isNullOrBlank())
+            customFieldList.setItems(dto.customFields)
+            findViewById<ExpandableSectionView>(R.id.sectionOther).setExpanded(dto.customFields.isNotEmpty())
+            findViewById<ExpandableSectionView>(R.id.sectionOther).setItemCount(dto.customFields.size)
             findViewById<ExpandableSectionView>(R.id.sectionPersonal).setExpanded(
                 dto.birthday != null || dto.events.isNotEmpty() || dto.relations.isNotEmpty(),
             )
@@ -448,7 +482,7 @@ class ContactEditActivity : AppCompatActivity() {
             events = eventList.items(),
             phoneticGivenName = phoneticGivenNameField.text.toString().trim().ifBlank { null },
             phoneticFamilyName = phoneticFamilyNameField.text.toString().trim().ifBlank { null },
-            customFields = emptyList(),
+            customFields = customFieldList.items(),
             pronouns = pronounsField.text.toString().trim().ifBlank { null },
         )
 
