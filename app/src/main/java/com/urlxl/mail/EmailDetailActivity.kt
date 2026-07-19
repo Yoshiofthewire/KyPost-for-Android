@@ -130,13 +130,16 @@ class EmailDetailActivity : AppCompatActivity() {
             useWideViewPort = true
             loadWithOverviewMode = true
             defaultTextEncodingName = "utf-8"
-            // Senders can embed tracking pixels; loading them automatically leaks the reader's IP
-            // and "message opened" status before they've decided whether to trust the sender.
+            // Senders can embed tracking beacons — not just <img>, but <iframe>, <video>/<audio>
+            // src or poster, <link rel="stylesheet">, and remote web fonts all fetch over the
+            // network too, and blockNetworkImage only covers image-typed resources. Blocking all
+            // network loads closes those too; loading them automatically would leak the reader's
+            // IP and "message opened" status before they've decided whether to trust the sender.
             // btnShowImages lets them opt in per-message instead.
-            blockNetworkImage = true
+            blockNetworkLoads = true
         }
         btnShowImages.setOnClickListener {
-            webView.settings.blockNetworkImage = false
+            webView.settings.blockNetworkLoads = false
             imagesBlockedBar.visibility = View.GONE
             // WebView.reload() doesn't reliably re-fetch a page loaded via loadDataWithBaseURL, so
             // re-issue the same load now that the setting allows network images through.
@@ -315,9 +318,13 @@ class EmailDetailActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_REMOVED_EMAIL_ID = "removed_email_id"
 
-        /** Cheap heuristic for "does this body reference a remote image" — only used to decide
-         *  whether the "Show images" bar is worth showing, not a security control itself (images
-         *  are always blocked regardless via [android.webkit.WebSettings.setBlockNetworkImage]). */
-        private val REMOTE_IMAGE_PATTERN = Regex("""<img\b[^>]*\ssrc\s*=\s*["']https?://""", RegexOption.IGNORE_CASE)
+        /** Cheap heuristic for "does this body reference remote content" (images, iframes, media,
+         *  stylesheets) — only used to decide whether the "Show images" bar is worth showing, not
+         *  a security control itself (all network loads are blocked regardless via
+         *  [android.webkit.WebSettings.setBlockNetworkLoads]). */
+        private val REMOTE_IMAGE_PATTERN = Regex(
+            """<(?:img|link|iframe|video|audio|source|embed|object)\b[^>]*\s(?:src|href|poster|data)\s*=\s*["']https?://""",
+            RegexOption.IGNORE_CASE,
+        )
     }
 }
