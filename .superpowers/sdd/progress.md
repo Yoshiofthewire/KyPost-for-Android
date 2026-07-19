@@ -9,7 +9,7 @@
 - [x] Task 1: Shared `pairingAuthHeaders()` extension helper
 - [x] Task 2: `RelayMailSource.kt`
 - [x] Task 3: `ContactSyncClient.kt`
-- [ ] Task 4: `GroupsSyncClient.kt`
+- [x] Task 4: `GroupsSyncClient.kt`
 - [ ] Task 5: `PullNotificationClient.kt`
 - [ ] Task 6: `PgpQrClient.kt`
 
@@ -37,3 +37,4 @@
 - Task 3: complete (commits 540d197..9b7fec5, review clean).
   Minor (deferred to final review): import ordering in ContactSyncClientTest.kt
   (HEADER_SUBSCRIBER_ID before HEADER_SUBSCRIBER_HASH, not alphabetical) — cosmetic.
+- Task 4: complete (commits 640c0c4..fdd73e9, review clean, no findings).
