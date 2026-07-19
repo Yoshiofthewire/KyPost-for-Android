@@ -1,9 +1,11 @@
 package com.urlxl.mail.push
 
 import com.urlxl.mail.executeSync
+import com.urlxl.mail.pairingAuthHeaders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,13 +29,16 @@ sealed class PullResult {
 }
 
 /**
- * Talks to `GET <pullEndpoint>?sub=&hash=&after=`. Auth is the query params only; okhttp's
- * query builder URL-encodes them (notably the HMAC `hash`). Kept parallel to
+ * Talks to `GET <pullEndpoint>?after=`. Auth is sent as X-Kypost-Subscriber-Id/
+ * X-Kypost-Subscriber-Hash headers, never query params. Kept parallel to
  * [NativeRegistrationClient] — same okhttp/serialization stack, no session/bearer.
  */
 class PullNotificationClient(
     private val json: Json = Json { ignoreUnknownKeys = true },
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
+    // Call.Factory (not the concrete OkHttpClient) so tests can inject a fake without a real
+    // network call or a MockWebServer dependency; OkHttpClient itself satisfies this interface.
+    // Mirrors RelayMailSource/ContactSyncClient/GroupsSyncClient/PgpQrClient's callFactory pattern.
+    private val callFactory: Call.Factory = OkHttpClient.Builder().build(),
 ) {
     suspend fun pull(
         pullEndpoint: String,
@@ -45,15 +50,15 @@ class PullNotificationClient(
             ?: return PullResult.BadRequest("Pull endpoint is not a valid URL")
 
         val url = base.newBuilder()
-            .addQueryParameter("sub", subscriberId)
-            .addQueryParameter("hash", subscriberHash)
             .addQueryParameter("after", afterCursor.coerceAtLeast(0L).toString())
             .build()
 
-        val httpRequest = Request.Builder().url(url).get().build()
+        val httpRequest = Request.Builder().url(url).get()
+            .pairingAuthHeaders(subscriberId, subscriberHash)
+            .build()
 
         val result = withContext(Dispatchers.IO) {
-            okHttpClient.executeSync(httpRequest) { response ->
+            callFactory.executeSync(httpRequest) { response ->
                 Triple(response.code, response.body?.string().orEmpty(), response.header("Retry-After"))
             }
         }
