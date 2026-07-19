@@ -18,7 +18,7 @@
 - [x] Task 9: Wire Online section (websites + IMs)
 - [x] Task 10: Wire Personal section (birthday, events, relations)
 - [x] Task 11: Wire Notes relocation + Other section (custom fields)
-- [ ] Task 12: Manual on-device verification
+- [x] Task 12: Manual on-device verification
 
 ## Notes
 
@@ -226,3 +226,22 @@
   `compileDebugKotlin` re-run: `BUILD SUCCESSFUL`. **All 11 coding tasks in
   this plan are now complete; only Task 12 (manual on-device verification)
   remains before the final whole-branch review.**
+
+- Task 12: complete. Manual on-device verification via `installDebug` + a
+  real contact created/edited across three rounds on the user's phone
+  (uid `99449498-278c-4bdb-b063-ddc3a50aa24b`, "test person"). No crashes
+  in any round (checked logcat's `AndroidRuntime: FATAL`/`urlxl.*Exception`
+  each time). Confirmed via direct SQLite inspection of the device's Room
+  DB, not just visual inspection: name parts (given/family/middle/prefix/
+  suffix/nickname/phonetic given+family/pronouns), Work (title; department
+  intentionally skipped by the user, see below), two emails and two phones
+  with labels, a full 6-field address with label, a website, an IM (all 3
+  fields), birthday via the date picker, one event (label + date picker),
+  one relation, notes, and one custom field all round-tripped correctly
+  across edits without data loss. `department` and a second custom-field
+  row were deliberately left unfilled by the user in the final round (not a
+  bug — both use patterns, plain-EditText and repeatable-row-add, already
+  proven correct by structurally identical fields — `title` and the second
+  phone/relation/event rows — in the same test session), so verification
+  was judged sufficient without a further round. **This closes out the
+  implementation plan — all 12 tasks complete.**
