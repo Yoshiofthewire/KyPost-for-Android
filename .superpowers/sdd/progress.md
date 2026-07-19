@@ -10,7 +10,7 @@
 - [x] Task 1: `RepeatableFieldList<T>` generic component
 - [x] Task 2: `ExpandableSectionView` collapsible container
 - [x] Task 3: Extend `mergedContactDto` for every newly-editable field
-- [ ] Task 4: Rewrite `activity_contact_edit.xml` with all sections
+- [x] Task 4: Rewrite `activity_contact_edit.xml` with all sections
 - [ ] Task 5: Wire Name section + read-only `isSelf`/`pgpKey` badges
 - [ ] Task 6: Wire Work section
 - [ ] Task 7: Wire Contact section (full emails/phones lists)
@@ -100,3 +100,25 @@
   (an explicit cwd assertion early in the dispatch prompt) is already in use
   and didn't fully prevent this one; worth raising with the user if a fourth
   instance occurs.
+
+- Task 4: complete (commit `262db49`). Review: spec ✅, quality Approved, no
+  Critical/Important issues. Reviewer independently re-ran
+  `processDebugResources` (not just trusting the report) and cross-checked
+  every id/string this layout produces against every reference Tasks 5-11's
+  plan text makes — all present, none misspelled. One real bug in *this
+  plan's own text* surfaced and was correctly fixed by the implementer: the
+  brief's XML declared `xmlns:app` only on the first of two sibling `Chip`
+  elements, but XML namespace declarations don't inherit across siblings —
+  the second Chip's `app:chipMinHeight`/`app:ensureMinTouchTargetSize`
+  wouldn't have resolved. Implementer added the declaration to both Chips;
+  reviewer confirmed this was necessary and correct, not scope creep. Minor,
+  not fixed: implementer's own report miscounted the string total (58
+  claimed vs. 51 actual) — narrative-only, doesn't affect shipped code.
+- This task's own build check (`processDebugResources`) intentionally
+  doesn't compile Kotlin — `ContactEditActivity.kt` now references two ids
+  this layout rewrite removed (`editContactEmail`/`editContactPhone`) and
+  won't compile again until Task 7 rewires that section. Expected, per the
+  plan's own design (each of Tasks 5-7 progressively fixes more of the
+  compile break; full green isn't expected again until Task 7's checkpoint).
+  Noting here so a resume doesn't mistake the current red Kotlin build for a
+  regression.
