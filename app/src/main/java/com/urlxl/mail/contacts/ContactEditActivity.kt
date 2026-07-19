@@ -31,6 +31,8 @@ class ContactEditActivity : AppCompatActivity() {
     private lateinit var avatarView: TextView
     private lateinit var fnField: EditText
     private lateinit var orgField: EditText
+    private lateinit var titleField: EditText
+    private lateinit var departmentField: EditText
     private lateinit var emailField: EditText
     private lateinit var phoneField: EditText
     private lateinit var notesField: EditText
@@ -73,6 +75,8 @@ class ContactEditActivity : AppCompatActivity() {
         avatarView = findViewById(R.id.contactEditAvatar)
         fnField = findViewById(R.id.editContactName)
         orgField = findViewById(R.id.editContactOrg)
+        titleField = findViewById(R.id.editContactTitle)
+        departmentField = findViewById(R.id.editContactDepartment)
         emailField = findViewById(R.id.editContactEmail)
         phoneField = findViewById(R.id.editContactPhone)
         notesField = findViewById(R.id.editContactNotes)
@@ -89,6 +93,7 @@ class ContactEditActivity : AppCompatActivity() {
         pgpBadge = findViewById(R.id.contactEditPgpBadge)
         findViewById<ExpandableSectionView>(R.id.sectionName).setTitle(getString(R.string.contacts_section_name))
         findViewById<ExpandableSectionView>(R.id.sectionName).setExpanded(true)
+        findViewById<ExpandableSectionView>(R.id.sectionWork).setTitle(getString(R.string.contacts_section_work))
         saveButton = findViewById(R.id.btnSaveContact)
         deleteButton = findViewById(R.id.btnDeleteContact)
 
@@ -130,6 +135,8 @@ class ContactEditActivity : AppCompatActivity() {
             existingRev = dto.rev
             fnField.setText(dto.fn)
             orgField.setText(dto.org.orEmpty())
+            titleField.setText(dto.title.orEmpty())
+            departmentField.setText(dto.department.orEmpty())
             notesField.setText(dto.notes.orEmpty())
             givenNameField.setText(dto.givenName.orEmpty())
             familyNameField.setText(dto.familyName.orEmpty())
@@ -155,6 +162,9 @@ class ContactEditActivity : AppCompatActivity() {
             phoneField.setText(dto.phones.firstOrNull()?.value.orEmpty())
             extraEmails = dto.emails.drop(1)
             extraPhones = dto.phones.drop(1)
+            findViewById<ExpandableSectionView>(R.id.sectionWork).setExpanded(
+                dto.org != null || dto.title != null || dto.department != null,
+            )
         }
     }
 
@@ -181,8 +191,8 @@ class ContactEditActivity : AppCompatActivity() {
             suffix = suffixField.text.toString().trim().ifBlank { null },
             nickname = nicknameField.text.toString().trim().ifBlank { null },
             org = orgField.text.toString().trim().ifBlank { null },
-            title = null,
-            department = null,
+            title = titleField.text.toString().trim().ifBlank { null },
+            department = departmentField.text.toString().trim().ifBlank { null },
             notes = notesField.text.toString().trim().ifBlank { null },
             birthday = null,
             emails = emails,
