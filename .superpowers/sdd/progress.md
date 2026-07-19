@@ -13,7 +13,7 @@
 - [x] Task 4: Rewrite `activity_contact_edit.xml` with all sections
 - [x] Task 5: Wire Name section + read-only `isSelf`/`pgpKey` badges
 - [x] Task 6: Wire Work section
-- [ ] Task 7: Wire Contact section (full emails/phones lists)
+- [x] Task 7: Wire Contact section (full emails/phones lists)
 - [ ] Task 8: Wire Addresses section
 - [ ] Task 9: Wire Online section (websites + IMs)
 - [ ] Task 10: Wire Personal section (birthday, events, relations)
@@ -152,3 +152,18 @@
   2nd and 3rd: stray uncommitted duplicates, no bad commit). Per this
   ledger's own earlier note, flagging to the user is warranted at a fourth
   occurrence — noting here that we're now at three.
+
+- Task 7: complete (commit `c69ee5d`). Review: spec ✅, quality Approved, no
+  Critical/Important issues — no wrong-checkout incident this time either.
+  This is the first task where `RepeatableFieldList` is actually used in
+  production code and the first full-green compile checkpoint since Task
+  4's layout rewrite; reviewer independently re-ran `compileDebugKotlin`
+  (zero errors) and specifically re-verified the shared-`emit`-lambda
+  closure fix was correctly applied to both `emailList` and `phoneList` (not
+  reverted to the earlier-caught buggy two-separate-closures pattern) —
+  quoted the exact lines for both. `isBlank` (AND across both sub-fields,
+  not OR) confirmed correct for both lists. Implementer independently ran
+  the full contacts-package instrumented suite: 9/9 passing. Minor, not
+  fixed: class-level KDoc above `ContactEditActivity` is now stale (still
+  describes the old single-value-with-overflow-preservation behavior this
+  task replaced). Carry to final whole-branch review.
