@@ -1,6 +1,7 @@
 package com.urlxl.mail.pgp
 
 import com.urlxl.mail.executeSync
+import com.urlxl.mail.pairingAuthHeaders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -9,7 +10,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-/** Outcome of `GET /api/pgp/qr/token` (pairing-authenticated via `sub`/`hash` query params). */
+/** Outcome of `GET /api/pgp/qr/token` (pairing-authenticated via X-Kypost-Subscriber-Id/X-Kypost-Subscriber-Hash headers). */
 sealed class PgpQrTokenResult {
     data class Success(val token: PgpQrTokenDto) : PgpQrTokenResult()
 
@@ -48,10 +49,11 @@ sealed class PgpQrKeyResult {
 
 /**
  * Talks to the backend's PGP QR key-exchange endpoints. `mintToken` is pairing-authenticated
- * exactly like every other endpoint this app calls (`sub`/`hash` query params, never a session
- * cookie — this app has no session-cookie concept). `fetchKey` is unauthenticated; the token
- * itself is the credential. Kept parallel to [com.urlxl.mail.contacts.ContactSyncClient] — same
- * okhttp/serialization stack and status-code-to-result mapping shape.
+ * exactly like every other endpoint this app calls (X-Kypost-Subscriber-Id/X-Kypost-Subscriber-Hash
+ * headers, never a session cookie — this app has no session-cookie concept). `fetchKey` is
+ * unauthenticated; the token itself is the credential. Kept parallel to
+ * [com.urlxl.mail.contacts.ContactSyncClient] — same okhttp/serialization stack and
+ * status-code-to-result mapping shape.
  */
 class PgpQrClient(
     private val json: Json = Json { ignoreUnknownKeys = true },
@@ -61,12 +63,11 @@ class PgpQrClient(
 ) {
     suspend fun mintToken(serverUrl: String, subscriberId: String, subscriberHash: String): PgpQrTokenResult {
         val base = tokenUrl(serverUrl) ?: return PgpQrTokenResult.Retryable("Server URL is not valid")
-        val url = base.newBuilder()
-            .addQueryParameter("sub", subscriberId)
-            .addQueryParameter("hash", subscriberHash)
+        val request = Request.Builder().url(base).get()
+            .pairingAuthHeaders(subscriberId, subscriberHash)
             .build()
 
-        val result = executeRequest(Request.Builder().url(url).get().build())
+        val result = executeRequest(request)
         val (code, rawBody) = result.getOrNull()
             ?: return PgpQrTokenResult.Retryable(
                 result.exceptionOrNull()?.message ?: "PGP QR token mint failed: network error",

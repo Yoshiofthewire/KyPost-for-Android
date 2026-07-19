@@ -1,5 +1,7 @@
 package com.urlxl.mail.pgp
 
+import com.urlxl.mail.HEADER_SUBSCRIBER_HASH
+import com.urlxl.mail.HEADER_SUBSCRIBER_ID
 import kotlinx.coroutines.runBlocking
 import okhttp3.Call
 import okhttp3.Callback
@@ -93,8 +95,10 @@ class PgpQrClientTest {
             "https://relay.example.com/api/pgp/qr/token",
             sentRequest.url.newBuilder().query(null).build().toString(),
         )
-        assertEquals("sub-1", sentRequest.url.queryParameter("sub"))
-        assertEquals("hash-1", sentRequest.url.queryParameter("hash"))
+        assertEquals("sub-1", sentRequest.header(HEADER_SUBSCRIBER_ID))
+        assertEquals("hash-1", sentRequest.header(HEADER_SUBSCRIBER_HASH))
+        assertNull(sentRequest.url.queryParameter("sub"))
+        assertNull(sentRequest.url.queryParameter("hash"))
         assertEquals("GET", sentRequest.method)
     }
 
