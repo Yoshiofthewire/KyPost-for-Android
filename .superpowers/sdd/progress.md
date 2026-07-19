@@ -12,7 +12,7 @@
 - [x] Task 3: Extend `mergedContactDto` for every newly-editable field
 - [x] Task 4: Rewrite `activity_contact_edit.xml` with all sections
 - [x] Task 5: Wire Name section + read-only `isSelf`/`pgpKey` badges
-- [ ] Task 6: Wire Work section
+- [x] Task 6: Wire Work section
 - [ ] Task 7: Wire Contact section (full emails/phones lists)
 - [ ] Task 8: Wire Addresses section
 - [ ] Task 9: Wire Online section (websites + IMs)
@@ -137,3 +137,18 @@
   uses for the identical concept in the contacts list — two different
   labels for the same thing across two screens. Cosmetic only. Carry to
   final whole-branch review for triage.
+
+- Task 6: complete (commit `727d699`). Review: spec ✅, quality Approved,
+  zero findings of any severity — cleanest review yet. Reviewer independently
+  re-ran `compileDebugKotlin`, confirmed exactly the two expected dangling
+  errors.
+- Incident (third occurrence, same class as before): Task 6's implementer
+  again left a stray uncommitted duplicate of its own change in the primary
+  checkout (`ContactEditActivity.kt`, 16 lines, based off the pre-Task-3
+  baseline there). Content-consistent with what it correctly committed here
+  as `727d699`; discarded via `git checkout --` in the primary checkout,
+  `main` unaffected. This is the third incident in this plan of a subagent
+  touching the wrong checkout in some way (1st: committed to main directly;
+  2nd and 3rd: stray uncommitted duplicates, no bad commit). Per this
+  ledger's own earlier note, flagging to the user is warranted at a fourth
+  occurrence — noting here that we're now at three.
