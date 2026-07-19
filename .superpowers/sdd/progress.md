@@ -102,15 +102,45 @@ fix applied independently in Tasks 3 and 4 is a consistent, inherent
 consequence of the launcher↔enabler mutual-reference pattern, not a design
 smell. No Critical or Important code issues.
 
-**Outstanding item (release-gating, not merge-blocking):** no on-device or
-emulator verification has been performed anywhere in this branch — no
-device was available in this environment for any of the 4 tasks. All builds
-pass (`compileDebugKotlin`/`processDebugResources`/`assembleDebug`), but the
-plan's own Testing section calls for a real device pass. **Before this
-branch is considered done, a human needs to run:** Task 3 Step 8 (Contacts-
-screen device-sync toggle regression) and Task 4 Step 6 (fresh-install
-pairing-screen popup walkthrough — Enable/grant, Not Now, cancel, and
-confirm the popup never reappears after any of those).
+**On-device verification: done.** A device (`emulator-5554`, Pixel 10 AVD)
+was connected after the review above, and the full Task 4 walkthrough was
+run live via `adb` (screenshots + `uiautomator dump` for exact tap
+coordinates, since no device-automation MCP tool was available):
+
+- Fresh install, first tap on "Scan QR Code" → intro popup appeared with the
+  exact title/message/button text from Task 2's strings.
+- Tapped "Enable" → READ_CONTACTS/WRITE_CONTACTS permission prompt appeared
+  (no scanner underneath it — confirms the race-avoidance sequencing holds
+  on a real device, not just in review). Tapped "Allow" →
+  "Device contact sync enabled" toast fired, QR scanner opened right after.
+  Verified via `run-as`: `com.urlxl.mail.device_contacts.xml` shows
+  `enabled=true`, `has_shown_sync_intro=true`; `dumpsys account` shows the
+  `KyPost` / `com.urlxl.mail.contacts` account was created; `dumpsys
+  jobscheduler` shows `DeviceContactSyncWorker`'s periodic job scheduled.
+  This exercises `DeviceContactSyncEnabler.enableAfterPermissionGrant()` —
+  the exact method `ContactsListActivity`'s menu toggle also calls — fully
+  end-to-end on-device, not just in a build.
+- Tapped "Scan QR Code" again (same install) → scanner opened directly, no
+  popup — one-time gating confirmed.
+- Cleared data, repeated with "Not Now" → scanner opened directly, no
+  permission prompt, `enabled` key absent from prefs (still off),
+  `has_shown_sync_intro=true`.
+- Cleared data, repeated with back-press (cancel) instead of a button →
+  same result as "Not Now" — scanner opened directly, sync stayed off,
+  flag set.
+
+**Not independently verified live:** `ContactsListActivity`'s Contacts
+screen itself. Reaching it requires an actual server pairing (`MainActivity`
+routes to `PushPairingActivity`, not `InboxActivity`, whenever
+`pairing == null`), which isn't available in this environment, and both
+`InboxActivity` and `ContactsListActivity` are `android:exported="false"` so
+they can't be launched directly via `adb`. This is a narrower residual gap
+than the original "no device at all" state: the shared enable method is now
+proven correct live (above), and the per-task/whole-branch reviews already
+confirmed the `ContactsListActivity` refactor is a byte-for-byte behavioral
+match to the pre-refactor code. What remains unverified live is narrowly
+the menu-label toggle text and `disableDeviceSync()` (unchanged by this
+branch). Flagged to the user rather than silently treated as fully closed.
 
 Four Minor items surfaced, none requiring code changes: (1) singular
 `contact_sync_intro_*` vs. plural `contacts_device_sync_*` string-key
@@ -124,6 +154,9 @@ recommended; (3) killing the app mid-permission-prompt after tapping
 Contacts menu; (4) minor import-ordering nit in `PushPairingActivity.kt`
 (cosmetic, no ktlint enforcement in this repo).
 
-**Branch is code-ready for `superpowers:finishing-a-development-branch`,
-but the on-device smoke test above should happen first — flagging to the
-user rather than proceeding straight to merge.**
+**Branch is ready for `superpowers:finishing-a-development-branch`.** On-device
+verification of the new popup (Task 4, the branch's actual new behavior) is
+complete and passed on every path. The one residual gap (live visual check
+of `ContactsListActivity`'s menu label, blocked on requiring a real server
+pairing in this environment) is disclosed to the user above rather than
+silently closed out.
