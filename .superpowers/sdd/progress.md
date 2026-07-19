@@ -15,7 +15,7 @@
 - [x] Task 6: Wire Work section
 - [x] Task 7: Wire Contact section (full emails/phones lists)
 - [x] Task 8: Wire Addresses section
-- [ ] Task 9: Wire Online section (websites + IMs)
+- [x] Task 9: Wire Online section (websites + IMs)
 - [ ] Task 10: Wire Personal section (birthday, events, relations)
 - [ ] Task 11: Wire Notes relocation + Other section (custom fields)
 - [ ] Task 12: Manual on-device verification
@@ -175,3 +175,11 @@
   confirmed correct, all six `TextWatcher`s reference the same closure
   instance. `isBlank` correctly ANDs all six `isNullOrBlank()` checks.
   Independent `compileDebugKotlin` re-run: `BUILD SUCCESSFUL`.
+
+- Task 9: complete (commit `223cf86`). Review: spec ✅, quality Approved,
+  zero findings. No wrong-checkout incident. First 3-field row in the
+  branch (IMs: service/label/value) — reviewer confirmed the shared-`emit`
+  pattern generalized correctly to all three fields, quoted in full. Both
+  lists (websites, IMs) correctly sum into one `sectionOnline` item count
+  from both lists' `onChanged` callbacks. Independent `compileDebugKotlin`
+  re-run: `BUILD SUCCESSFUL`.
