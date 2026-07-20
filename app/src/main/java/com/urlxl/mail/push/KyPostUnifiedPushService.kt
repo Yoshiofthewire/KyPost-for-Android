@@ -14,16 +14,16 @@ import org.unifiedpush.android.connector.data.PushMessage
 
 /**
  * Receives UnifiedPush protocol events from whichever distributor the user picked
- * (ntfy, etc). Mirrors LlamaFirebaseMessagingService but for the UnifiedPush transport.
+ * (ntfy, etc). Mirrors KyPostFirebaseMessagingService but for the UnifiedPush transport.
  * PushService is the current API; the older MessagingReceiver broadcast-based API
  * this replaced is deprecated upstream.
  */
-class LlamaUnifiedPushService : PushService() {
+class KyPostUnifiedPushService : PushService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val json = Json { ignoreUnknownKeys = true }
 
     companion object {
-        private const val TAG = "LlamaUnifiedPushService"
+        private const val TAG = "KyPostUnifiedPushService"
     }
 
     override fun onNewEndpoint(endpoint: PushEndpoint, instance: String) {

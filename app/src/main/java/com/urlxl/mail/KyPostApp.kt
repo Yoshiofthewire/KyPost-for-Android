@@ -15,14 +15,14 @@ import com.urlxl.mail.push.PushRuntime
  * mode, kick an immediate pull — complementing the WorkManager periodic baseline. In push mode
  * [com.urlxl.mail.push.PullSyncCoordinator.pullOnce] no-ops and disarms the periodic worker.
  */
-class LlamaApp : Application(), DefaultLifecycleObserver {
+class KyPostApp : Application(), DefaultLifecycleObserver {
     override fun onCreate() {
         super<Application>.onCreate()
         PushNotificationDispatcher.ensureChannel(this)
         try {
             DeviceContactsRuntime.graph(this).bootstrapIfEnabled()
         } catch (e: Exception) {
-            android.util.Log.e("LlamaApp", "Failed to bootstrap device contacts", e)
+            android.util.Log.e("KyPostApp", "Failed to bootstrap device contacts", e)
         }
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
@@ -32,17 +32,17 @@ class LlamaApp : Application(), DefaultLifecycleObserver {
         try {
             PushRuntime.graph(this).pullCoordinator.pullNowAsync()
         } catch (e: Exception) {
-            android.util.Log.e("LlamaApp", "Failed to pull", e)
+            android.util.Log.e("KyPostApp", "Failed to pull", e)
         }
         try {
             ContactsRuntime.graph(this).coordinator.syncNowAsync()
         } catch (e: Exception) {
-            android.util.Log.e("LlamaApp", "Failed to sync contacts (relay)", e)
+            android.util.Log.e("KyPostApp", "Failed to sync contacts (relay)", e)
         }
         try {
             DeviceContactsRuntime.graph(this).coordinator.syncNowAsync()
         } catch (e: Exception) {
-            android.util.Log.e("LlamaApp", "Failed to sync contacts (device)", e)
+            android.util.Log.e("KyPostApp", "Failed to sync contacts (device)", e)
         }
     }
 }

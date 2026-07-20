@@ -4,12 +4,12 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 
-class LlamaContactAuthenticatorService : Service() {
-    private lateinit var authenticator: LlamaContactAuthenticator
+class KyPostContactAuthenticatorService : Service() {
+    private lateinit var authenticator: KyPostContactAuthenticator
 
     override fun onCreate() {
         super.onCreate()
-        authenticator = LlamaContactAuthenticator(this)
+        authenticator = KyPostContactAuthenticator(this)
     }
 
     override fun onBind(intent: Intent?): IBinder = authenticator.iBinder

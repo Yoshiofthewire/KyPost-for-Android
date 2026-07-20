@@ -19,7 +19,7 @@ object UnifiedPushRegistrar {
     /**
      * Begins registration. [onResult] reports whether a distributor was selected
      * and registration was requested — the endpoint itself arrives later,
-     * asynchronously, via LlamaUnifiedPushService.onNewEndpoint.
+     * asynchronously, via KyPostUnifiedPushService.onNewEndpoint.
      */
     fun beginRegistration(activity: Activity, onResult: (success: Boolean, error: String?) -> Unit) {
         when (UnifiedPush.resolveDefaultDistributor(activity)) {

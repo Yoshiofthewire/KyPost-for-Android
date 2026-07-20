@@ -6,7 +6,7 @@ import android.accounts.AccountManager
 import android.content.Context
 import android.os.Bundle
 
-class LlamaContactAuthenticator(context: Context) : AbstractAccountAuthenticator(context) {
+class KyPostContactAuthenticator(context: Context) : AbstractAccountAuthenticator(context) {
     override fun editProperties(
         response: AccountAuthenticatorResponse?,
         accountType: String?,

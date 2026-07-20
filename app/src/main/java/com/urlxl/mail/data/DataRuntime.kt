@@ -17,7 +17,7 @@ class DataGraph(context: Context) {
         .build()
 }
 
-/** Standalone singleton, kept independent of PushGraph/LlamaApp — mirrors how PushGraph itself
+/** Standalone singleton, kept independent of PushGraph/KyPostApp — mirrors how PushGraph itself
  *  stands alone rather than nesting inside another graph. */
 object DataRuntime {
     private val holder = SingletonGraph(::DataGraph)

@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
  *
  * Tradeoff: pull mode has no FCM push to wake us, so we can't get true real-time delivery
  * for free. We use WorkManager periodic work at the platform minimum (15 min) plus an
- * immediate pull on every app foreground ([LlamaApp]) and after (re)pairing. This keeps
+ * immediate pull on every app foreground ([KyPostApp]) and after (re)pairing. This keeps
  * background battery cost negligible at the price of up to ~15 min latency while backgrounded.
  * If near-real-time background delivery is ever required, the alternative is a foreground
  * service with a 30–60s poll loop and a persistent notification, gated behind a user setting —

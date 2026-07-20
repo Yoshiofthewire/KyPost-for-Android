@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
 
     <application
-        android:name=".LlamaApp"
+        android:name=".KyPostApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -79,7 +79,7 @@
         </activity>
 
         <service
-            android:name=".push.LlamaFirebaseMessagingService"
+            android:name=".push.KyPostFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
@@ -87,7 +87,7 @@
         </service>
 
         <service
-            android:name=".push.LlamaUnifiedPushService"
+            android:name=".push.KyPostUnifiedPushService"
             android:exported="false">
             <intent-filter>
                 <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
@@ -104,7 +104,7 @@
             android:launchMode="singleTop" />
 
         <service
-            android:name=".contacts.device.LlamaContactAuthenticatorService"
+            android:name=".contacts.device.KyPostContactAuthenticatorService"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />

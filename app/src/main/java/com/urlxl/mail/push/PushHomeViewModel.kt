@@ -119,7 +119,7 @@ class PushHomeViewModel(application: Application) : AndroidViewModel(application
     /**
      * Switches this device to UnifiedPush: triggers the distributor picker (via
      * [UnifiedPushRegistrar]) and requests registration. The endpoint itself arrives
-     * asynchronously via LlamaUnifiedPushService.onNewEndpoint, which completes the
+     * asynchronously via KyPostUnifiedPushService.onNewEndpoint, which completes the
      * server registration — this call only starts that flow and reports whether it
      * was successfully kicked off.
      */
