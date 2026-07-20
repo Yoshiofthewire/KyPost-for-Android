@@ -24,6 +24,7 @@ import com.urlxl.mail.contacts.device.DeviceContactsRuntime
 import com.urlxl.mail.contacts.device.DeviceContactSyncEnabler
 import com.urlxl.mail.contacts.device.DeviceContactSyncScheduler
 import com.urlxl.mail.data.ContactEntity
+import com.urlxl.mail.pgp.hasPgpIdentity
 import kotlinx.coroutines.launch
 
 class ContactsListActivity : AppCompatActivity() {
@@ -68,8 +69,8 @@ class ContactsListActivity : AppCompatActivity() {
                     finish()
                 } else {
                     startActivity(
-                        Intent(this, ContactEditActivity::class.java)
-                            .putExtra(ContactEditActivity.EXTRA_UID, contact.uid),
+                        Intent(this, ContactDetailActivity::class.java)
+                            .putExtra(ContactDetailActivity.EXTRA_UID, contact.uid),
                     )
                 }
             }
@@ -115,6 +116,15 @@ class ContactsListActivity : AppCompatActivity() {
         if (graph.settings.isEnabled()) {
             graph.observer.register()
             graph.coordinator.syncNowAsync()
+        }
+
+        if (!pickMode) {
+            // Refreshed every time this screen becomes visible (not just once) so setting up a PGP
+            // identity on the web app and coming back here picks it up without needing a full
+            // contacts re-sync.
+            lifecycleScope.launch {
+                adapter.selfHasPgpIdentity = hasPgpIdentity(this@ContactsListActivity)
+            }
         }
     }
 

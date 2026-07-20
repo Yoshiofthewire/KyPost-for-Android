@@ -21,6 +21,7 @@ import com.urlxl.mail.applyTopInsetWithHeader
 import com.urlxl.mail.bindAvatar
 import com.urlxl.mail.contacts.device.DeviceContactsRuntime
 import com.urlxl.mail.data.DataRuntime
+import com.urlxl.mail.pgp.hasPgpIdentity
 import kotlinx.coroutines.launch
 
 /** Create/edit form, organized into collapsible sections (Name, Work, Contact, Addresses, Online,
@@ -417,7 +418,10 @@ class ContactEditActivity : AppCompatActivity() {
                 selfBadge.text = getString(R.string.contact_self_label)
                 applyStatusBadgeTheme(this@ContactEditActivity, selfBadge, active = true)
             }
-            val hasKey = !dto.pgpKey.isNullOrBlank()
+            // Only the self-contact needs the extra (network) identity check — every other
+            // contact's badge is fully determined by its own pgpKey field.
+            val selfHasPgpIdentity = if (dto.isSelf) hasPgpIdentity(this@ContactEditActivity) else null
+            val hasKey = contactHasLinkedPgpKey(dto.pgpKey, dto.isSelf, selfHasPgpIdentity)
             pgpBadge.visibility = if (hasKey) View.VISIBLE else View.GONE
             if (hasKey) {
                 pgpBadge.text = getString(R.string.contacts_pgp_badge_visible)

@@ -191,6 +191,17 @@
 
     <string name="contacts_pgp_badge_visible">PGP key on file</string>
 
+    <string name="contacts_detail_edit">Edit</string>
+    <string name="contacts_detail_not_found">Contact no longer available</string>
+    <string name="contacts_detail_email_header">Email</string>
+    <string name="contacts_detail_phone_header">Phone</string>
+    <string name="contacts_detail_website_header">Website</string>
+    <string name="contacts_detail_im_header">Messaging</string>
+    <string name="contacts_detail_birthday_header">Birthday</string>
+    <string name="contacts_detail_events_header">Events</string>
+    <string name="contacts_detail_relations_header">Related</string>
+    <string name="contacts_detail_no_app_for_action">No app found to handle this</string>
+
     <string name="loading_emails">Syncing emails…</string>
     <string name="finding_email">Finding new email…</string>
     <string name="no_archive_folders">No archive folders found</string>

@@ -601,6 +601,15 @@ internal fun readableOn(backgroundColor: Int): Int {
     return if (darkness >= 0.45) Color.WHITE else Color.BLACK
 }
 
+/** True when [palette]'s background is dark enough that white text reads better on it than black —
+ *  i.e. this is one of the app's "dark" themes (Dark Matter, Tropic Night, Ocean, ...) rather than a
+ *  light one. Used by [com.urlxl.mail.EmailDetailActivity] to decide whether rendered email HTML
+ *  needs its own colors forcibly overridden: a light theme's palette already looks like a typical
+ *  email's default white-background/dark-text design, so nothing needs overriding there, but a dark
+ *  theme's palette does not, and most email HTML hardcodes its own light-mode colors regardless of
+ *  the reader's OS/app theme. */
+internal fun isDarkPalette(palette: ThemePalette): Boolean = readableOn(Color.parseColor(palette.bg)) == Color.WHITE
+
 private fun isNearWhite(color: Int): Boolean {
     return Color.red(color) > 235 && Color.green(color) > 235 && Color.blue(color) > 235
 }

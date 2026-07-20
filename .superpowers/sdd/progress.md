@@ -61,3 +61,27 @@ as a 7th commit (47f6cd7), controller-verified independently (grep zero
 matches, build clean, commit touches exactly the intended file). Import-
 ordering Minor in ContactSyncClientTest.kt left as-is per reviewer's
 explicit ruling (cosmetic, unenforced by tooling).
+
+# Deep-Link Scheme Rename Progress (llamalabels:// -> kypost://) - kypost-android portion
+
+**Plan:** /home/yoshi/git/kypost-server/docs/superpowers/plans/2026-07-19-deep-link-scheme-rename.md (Task 2)
+
+Task 2 (kypost-android): complete (commits 45e4d45..ac02c6c, review clean; controller fixed a phantom-scheme wording bug the implementer correctly flagged in app/src/main/AGENTS.md rather than guessing at; gradle test/build both pass, 10/10 parser tests; unrelated .artifacts/ uncommitted changes confirmed untouched throughout)
+
+# Remaining Llama Naming Cleanup Progress (kypost-android)
+
+**Plan:** docs/superpowers/plans/2026-07-19-llama-naming-cleanup.md
+**Start date:** 2026-07-19
+
+## Tasks
+
+Task 1: complete (commits ac02c6c..fbfdb23, review clean; implementer fixed one undocumented comment miss within the already-in-scope KyPostUnifiedPushService.kt)
+Task 2: complete (commits fbfdb23..3ef2fe6, review clean)
+Task 3: complete (commits 3ef2fe6..00a4af3, review clean)
+Task 4 (final sweep): complete - zero remaining llama references, gradle build/test clean
+
+## ALL 4 ANDROID CLEANUP TASKS COMPLETE - dispatching final whole-branch review
+
+## FINAL WHOLE-BRANCH REVIEW: Ready to merge/close out - no issues found
+
+## ALL TASKS COMPLETE (kypost-android llama naming cleanup) ✅

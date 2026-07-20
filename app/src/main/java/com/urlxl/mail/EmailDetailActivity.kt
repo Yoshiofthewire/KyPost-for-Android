@@ -154,31 +154,7 @@ class EmailDetailActivity : AppCompatActivity() {
             val palette = getStoredThemePalette(this)
             val monoFontFace = ibmPlexMonoFontFaceCss(this)
 
-            val htmlContent = """
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1" />
-                    <style>
-                        $monoFontFace
-                        body {
-                            font-family: 'IBM Plex Mono', monospace;
-                            font-size: 16px;
-                            line-height: 1.5;
-                            color: ${palette.inkStrong};
-                            background-color: ${palette.bg};
-                            margin: 0;
-                            padding: 8px;
-                            word-break: break-word;
-                        }
-                        a { color: ${palette.accent}; }
-                        img { max-width: 100%; height: auto; }
-                        pre { white-space: pre-wrap; }
-                    </style>
-                </head>
-                <body>$bodyToRender</body>
-                </html>
-            """.trimIndent()
+            val htmlContent = buildEmailBodyHtml(bodyToRender, palette, monoFontFace, isDark = isDarkPalette(palette))
 
             runOnUiThread {
                 lastRenderedHtml = htmlContent
@@ -328,3 +304,96 @@ class EmailDetailActivity : AppCompatActivity() {
         )
     }
 }
+
+/** Wraps [bodyToRender] (the email's own, untrusted HTML) in a themed document for [WebView].
+ *
+ *  Pulled out of the `onCreate` body-loading callback so it's unit-testable without a
+ *  Context-backed WebView/Activity (same extraction rationale as [mergedContactDto] in
+ *  `ContactEditActivity`).
+ *
+ *  For a light [palette] this only sets `body`'s own color/background — the same as before this
+ *  function existed, and enough, since a light palette already looks like a typical email's
+ *  default white-background/dark-text design.
+ *
+ *  For a dark [palette], a plain `body` rule isn't enough: most email HTML hardcodes its own
+ *  light-mode colors (inline `style="color:#000"`, legacy `bgcolor` attributes, or a `<style>`
+ *  block of its own), and those win over `body`'s inherited color/background at every descendant
+ *  that sets its own — producing exactly the reported bug (black text on the app's dark background
+ *  where an email set its own text color but not a background, or black-on-white where it set
+ *  both, depending on what that particular email happens to override). CSS `!important` beats a
+ *  plain (non-`!important`) declaration regardless of origin or specificity, so a wildcard
+ *  `!important` override here reliably wins over whatever the email brought — *unless* the email's
+ *  own declaration is itself `!important` too, which real templates increasingly do specifically to
+ *  defend their background/text colors against Gmail/Outlook/Apple Mail's own automatic dark-mode
+ *  recoloring. When both sides are `!important`, the cascade falls back to specificity/origin, and
+ *  an inline `style="...!important"` attribute always outranks any external stylesheet rule — no
+ *  selector on our side, however specific, can out-rank it (that's exactly the residual bug: an
+ *  email with an `!important`-marked white background stayed white-on-white, our forced light text
+ *  landing on top of it unread). [stripImportant] removes every literal `!important` from the
+ *  email's own markup first, so nothing in it can compete on importance at all — our `!important`
+ *  rules then win unconditionally, regardless of what selector or attribute the email used, per the
+ *  CSS cascade's origin/importance step being resolved before specificity is ever considered.
+ *  Does not need JavaScript (disabled in this WebView) or WebView's own force-dark APIs (which
+ *  follow the *system* day/night setting, not this app's independent, non-system-linked theme
+ *  picker). Links are re-forced to the palette's accent color after the wildcard rule so they don't
+ *  get flattened to the same color as body text.
+ *
+ *  [isDark] (from [isDarkPalette]) is a caller-supplied `Boolean` rather than computed in here from
+ *  [palette] directly so this function stays free of any `android.graphics.Color` call — same
+ *  reasoning as [mergedContactDto]'s extraction: a plain-JVM unit test can exercise it with no
+ *  Android framework/Robolectric dependency. */
+internal fun buildEmailBodyHtml(bodyToRender: String, palette: ThemePalette, monoFontFace: String, isDark: Boolean): String {
+    val darkModeOverrideCss = if (isDark) {
+        """
+        html, body {
+            background-color: ${palette.bg} !important;
+            color: ${palette.inkStrong} !important;
+        }
+        body * {
+            background-color: transparent !important;
+            color: ${palette.inkStrong} !important;
+        }
+        body a, body a * {
+            color: ${palette.accent} !important;
+        }
+        """.trimIndent()
+    } else {
+        ""
+    }
+    val body = if (isDark) stripImportant(bodyToRender) else bodyToRender
+    return """
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <style>
+                $monoFontFace
+                body {
+                    font-family: 'IBM Plex Mono', monospace;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    color: ${palette.inkStrong};
+                    background-color: ${palette.bg};
+                    margin: 0;
+                    padding: 8px;
+                    word-break: break-word;
+                }
+                a { color: ${palette.accent}; }
+                img { max-width: 100%; height: auto; }
+                pre { white-space: pre-wrap; }
+                $darkModeOverrideCss
+            </style>
+        </head>
+        <body>$body</body>
+        </html>
+    """.trimIndent()
+}
+
+/** Strips every literal (case-insensitive, whitespace-tolerant) `!important` from [html] — see
+ *  [buildEmailBodyHtml]'s doc for why this is what actually closes the override gap for
+ *  `!important`-defended email styling. A blunt text-level removal rather than a real CSS/HTML
+ *  parse: this app has no HTML parser dependency, the input is untrusted, and correctness only
+ *  requires that no `!important` survive anywhere reachable by a CSS declaration (inline `style=`
+ *  attributes or an embedded `<style>` block) — over-matching a stray `!important` inside, say, an
+ *  HTML comment or unrendered text is harmless, since removing it doesn't change what's displayed. */
+internal fun stripImportant(html: String): String = html.replace(Regex("""\s*!\s*important""", RegexOption.IGNORE_CASE), "")
