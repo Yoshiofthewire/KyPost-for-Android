@@ -117,7 +117,8 @@ class ContactSyncRepository(
     }
 
     suspend fun queueUpdate(contact: ContactDto) {
-        db.contactDao().upsertAll(listOf(contact.toEntity()))
+        val previous = db.contactDao().getByUid(contact.uid)
+        db.contactDao().upsertAll(listOf(contact.toEntity(previous)))
         db.pendingContactChangeDao().enqueue(
             PendingContactChangeEntity(
                 localUid = contact.uid,
@@ -169,7 +170,10 @@ class ContactSyncRepository(
             db.contactDao().deleteByUids(reconciled.keys.toList())
         }
 
-        db.contactDao().upsertAll(response.changed.map { it.toEntity() })
+        val incomingEntities = response.changed.map { dto ->
+            dto.toEntity(previous = db.contactDao().getByUid(dto.uid))
+        }
+        db.contactDao().upsertAll(incomingEntities)
         db.contactDao().deleteByUids(response.deleted.map { it.uid })
 
         if (flushedChanges.isNotEmpty()) {

@@ -50,6 +50,7 @@ class PushPairingActivity : AppCompatActivity() {
     private lateinit var chipUseFirebase: Chip
 
     private lateinit var statusText: TextView
+    private lateinit var serverUrlText: TextView
     private lateinit var subscriberText: TextView
     private lateinit var deviceIdText: TextView
     private lateinit var lastSyncText: TextView
@@ -141,6 +142,7 @@ class PushPairingActivity : AppCompatActivity() {
         historyList = findViewById(R.id.pushPairingHistoryList)
         btnScanQr = findViewById(R.id.btnScanQr)
         statusText = findViewById(R.id.pushPairingStatus)
+        serverUrlText = findViewById(R.id.pushPairingServerUrl)
         subscriberText = findViewById(R.id.pushPairingSubscriber)
         deviceIdText = findViewById(R.id.pushPairingDeviceId)
         lastSyncText = findViewById(R.id.pushPairingLastSync)
@@ -166,6 +168,7 @@ class PushPairingActivity : AppCompatActivity() {
             val modeLabel = if (state.deliveryMode == DeliveryMode.PULL) "App Pull" else "Relay Push"
             "$baseStatus • $modeLabel"
         }
+        serverUrlText.text = "Server: ${state.pairing?.serverUrl ?: "-"}"
         subscriberText.text = "Subscriber ID: ${state.pairing?.subscriberId?.let { maskTail(it, 6) } ?: "-"}"
         deviceIdText.text = "Device ID: ${state.pairing?.deviceId ?: "-"}"
         lastSyncText.text = "Last token sync: ${state.lastTokenSyncAtEpochMs?.let { dateFormat.format(Date(it)) } ?: "-"}"
@@ -216,7 +219,7 @@ class PushPairingActivity : AppCompatActivity() {
 
     private fun consumeDeepLink(intent: android.content.Intent?) {
         val data = intent?.dataString ?: return
-        handleParsedPairing(NativePairingDeepLinkParser.parse(data), alwaysConfirm = true)
+        handleParsedPairing(NativePairingDeepLinkParser.parse(data))
     }
 
     private fun onScanQrClicked() {
@@ -252,7 +255,7 @@ class PushPairingActivity : AppCompatActivity() {
                 result.rawValue.orEmpty()
             }.onSuccess { raw ->
                 if (raw.isNotBlank()) {
-                    handleParsedPairing(NativePairingDeepLinkParser.parse(raw), alwaysConfirm = false)
+                    handleParsedPairing(NativePairingDeepLinkParser.parse(raw))
                 }
             }.onFailure {
                 Toast.makeText(this@PushPairingActivity, "QR scan canceled or failed", Toast.LENGTH_SHORT).show()
@@ -260,23 +263,20 @@ class PushPairingActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleParsedPairing(parsed: PairingParseResult, alwaysConfirm: Boolean) {
+    private fun handleParsedPairing(parsed: PairingParseResult) {
         when (parsed) {
             is PairingParseResult.Error -> Toast.makeText(this, parsed.reason, Toast.LENGTH_SHORT).show()
-            is PairingParseResult.Success -> confirmAndApplyPairing(parsed.pairing, alwaysConfirm)
+            is PairingParseResult.Success -> confirmAndApplyPairing(parsed.pairing)
         }
     }
 
-    /** Deep links can fire from any app with zero user awareness, so they always confirm the
-     *  destination server before pairing. QR scans are a deliberate physical action and skip that
-     *  prompt when the device isn't paired yet — but if a pairing already exists, silently
-     *  replacing its server (regardless of how the new pairing arrived) gets the same prompt. */
-    private fun confirmAndApplyPairing(pairing: PairingData, alwaysConfirm: Boolean) {
+    /** Every pairing source — deep link, QR scan, or replacing an existing pairing — always
+     *  confirms the destination server before applying it. A QR scan proves the user operated
+     *  the camera, not that they know what server the code encodes: QR codes are trivially
+     *  copyable, photographable, and re-postable, so "physical action" is not proof of trust in
+     *  the destination. */
+    private fun confirmAndApplyPairing(pairing: PairingData) {
         val alreadyPaired = viewModel.uiState.value.pairing != null
-        if (!alwaysConfirm && !alreadyPaired) {
-            viewModel.applyPairing(pairing)
-            return
-        }
         val messageRes = if (alreadyPaired) R.string.pairing_confirm_replace_message else R.string.pairing_confirm_message
         AlertDialog.Builder(this)
             .setTitle(R.string.pairing_confirm_title)

@@ -93,13 +93,19 @@ object PushNotificationDispatcher {
 
     fun showMfaChallenge(context: Context, payload: MfaChallengePayload) {
         ensureMfaChannel(context)
+        MfaChallengeTracker.markDelivered(payload.challengeId)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             if (!granted) return
         }
 
-        val notificationId = mfaNotificationId(payload.challengeId)
+        // Client-side half of MFA rate-limiting (the server caps how often a challenge can be
+        // minted in the first place): repeated challenges within the cooldown window update the
+        // same notification in place — via the same id plus setOnlyAlertOnce below — instead of
+        // stacking a fresh, separately-alerting notification per challenge, so a flood of
+        // attempts can't use notification spam itself as part of an MFA-fatigue attack.
+        val notificationId = MfaNotificationState.idFor(payload.challengeId)
 
         val tapIntent = Intent(context, MfaApprovalActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -138,6 +144,7 @@ object PushNotificationDispatcher {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(tapPendingIntent)
             .addAction(0, "Approve", approvePendingIntent)
             .addAction(0, "Deny", denyPendingIntent)
@@ -147,8 +154,40 @@ object PushNotificationDispatcher {
     }
 
     fun cancelMfaChallenge(context: Context, challengeId: String) {
-        NotificationManagerCompat.from(context).cancel(mfaNotificationId(challengeId))
+        // Prefer the id actually tracked for the current coalescing window (correct even when
+        // this challengeId got folded into an earlier notification rather than posting its own),
+        // falling back to the deterministic per-challenge id if no window was ever recorded.
+        val idToCancel = MfaNotificationState.clear() ?: mfaNotificationId(challengeId)
+        NotificationManagerCompat.from(context).cancel(idToCancel)
     }
 
     private fun mfaNotificationId(challengeId: String): Int = ("mfa-$challengeId").hashCode()
+
+    /** Tracks the notification id of the currently-coalesced MFA prompt, so repeated challenges
+     *  within [WINDOW_MS] reuse it (see [showMfaChallenge]/[cancelMfaChallenge]) instead of each
+     *  minting and alerting on a separate notification. */
+    private object MfaNotificationState {
+        private const val WINDOW_MS = 5 * 60 * 1000L
+        private var activeId: Int? = null
+        private var windowStartedAtEpochMs: Long = 0L
+
+        @Synchronized
+        fun idFor(challengeId: String, nowEpochMs: Long = System.currentTimeMillis()): Int {
+            val existing = activeId
+            if (existing != null && nowEpochMs - windowStartedAtEpochMs <= WINDOW_MS) {
+                return existing
+            }
+            val id = mfaNotificationId(challengeId)
+            activeId = id
+            windowStartedAtEpochMs = nowEpochMs
+            return id
+        }
+
+        @Synchronized
+        fun clear(): Int? {
+            val id = activeId
+            activeId = null
+            return id
+        }
+    }
 }

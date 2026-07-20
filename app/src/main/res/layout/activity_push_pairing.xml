@@ -28,6 +28,14 @@
                 android:layout_marginBottom="8dp" />
 
             <TextView
+                android:id="@+id/pushPairingServerUrl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:fontFamily="@font/ibm_plex_mono"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
                 android:id="@+id/pushPairingSubscriber"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

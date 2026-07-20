@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.urlxl.mail.push.MfaApprovalActivity
 import com.urlxl.mail.push.MfaChallengePayloadParser
+import com.urlxl.mail.push.MfaChallengeTracker
 import com.urlxl.mail.push.PushNotificationDispatcher
 import com.urlxl.mail.push.PushRuntime
 import kotlinx.coroutines.flow.first
@@ -26,14 +27,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         lifecycleScope.launch {
-            intent.extras?.let { extras ->
-                MfaChallengePayloadParser.parse(extras)?.let { mfa ->
-                    val mfaIntent = Intent(this@MainActivity, MfaApprovalActivity::class.java)
-                    mfaIntent.putExtra(PushNotificationDispatcher.EXTRA_MFA_CHALLENGE_ID, mfa.challengeId)
-                    startActivity(mfaIntent)
-                    finish()
-                    return@launch
-                }
+            val mfa = intent.extras?.let { MfaChallengePayloadParser.parse(it) }
+            // MainActivity is exported as the app's launcher, so any co-installed app can start
+            // it with arbitrary extras — only forward to the approval screen for a challengeId
+            // that was actually delivered via a real push, not one an attacker merely supplied.
+            if (mfa != null && MfaChallengeTracker.isPending(mfa.challengeId)) {
+                val mfaIntent = Intent(this@MainActivity, MfaApprovalActivity::class.java)
+                mfaIntent.putExtra(PushNotificationDispatcher.EXTRA_MFA_CHALLENGE_ID, mfa.challengeId)
+                startActivity(mfaIntent)
+                finish()
+                return@launch
             }
 
             val configured = PushRuntime.graph(this@MainActivity).repository.state.first().pairing != null

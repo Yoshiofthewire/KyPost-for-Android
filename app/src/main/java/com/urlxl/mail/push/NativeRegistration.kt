@@ -3,12 +3,14 @@ package com.urlxl.mail.push
 import android.os.Build
 import com.urlxl.mail.APP_VERSION
 import com.urlxl.mail.executeSync
+import com.urlxl.mail.pairingHttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -53,13 +55,22 @@ data class NativeRegistrationResponse(
 )
 
 /**
- * Resolves the pull endpoint: the server-provided value wins, otherwise it is derived
- * from the paired server base URL. Mirrors [NativeRegistrationEndpointResolver] for the
- * register endpoint.
+ * Resolves the pull endpoint: the server-provided value wins only if it shares the paired
+ * server's scheme and host, otherwise it is derived from the paired server base URL. A
+ * cross-origin value is rejected rather than trusted, since this endpoint is polled
+ * automatically and carries the device's bearer credential on every request.
+ * Mirrors [NativeRegistrationEndpointResolver] for the register endpoint.
  */
 fun resolvePullEndpoint(serverUrl: String, provided: String?): String {
-    provided?.takeIf { it.isNotBlank() }?.let { return it }
-    return "${serverUrl.trimEnd('/')}/api/notifications/native/pull"
+    val fallback = "${serverUrl.trimEnd('/')}/api/notifications/native/pull"
+    val candidate = provided?.takeIf { it.isNotBlank() } ?: return fallback
+    val candidateUrl = candidate.toHttpUrlOrNull() ?: return fallback
+    val serverHttpUrl = serverUrl.toHttpUrlOrNull() ?: return fallback
+    return if (candidateUrl.scheme == serverHttpUrl.scheme && candidateUrl.host == serverHttpUrl.host) {
+        candidate
+    } else {
+        fallback
+    }
 }
 
 object NativeRegistrationRequestMapper {
@@ -99,7 +110,7 @@ sealed class NativeRegistrationResult {
 
 class NativeRegistrationClient(
     private val json: Json = Json { ignoreUnknownKeys = true },
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder().build(),
+    private val okHttpClient: OkHttpClient = pairingHttpClient(),
 ) {
     suspend fun register(
         pairing: PairingData,

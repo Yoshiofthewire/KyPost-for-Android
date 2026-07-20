@@ -47,4 +47,9 @@ data class ContactEntity(
     @ColumnInfo(defaultValue = "[]") val customFieldsJson: String = "[]",
     val pronouns: String? = null,
     @ColumnInfo(defaultValue = "0") val isSelf: Boolean = false,
+    // Locally-computed OpenPGP fingerprint of [pgpKey] (see PgpFingerprint.compute) — never
+    // trusts a server-supplied fingerprint string, same discipline as the QR key-exchange flow.
+    // Used only to detect when a sync-delivered pgpKey silently changes; not synced to the server.
+    val pgpKeyFingerprint: String? = null,
+    @ColumnInfo(defaultValue = "0") val pgpKeyNeedsReverification: Boolean = false,
 )

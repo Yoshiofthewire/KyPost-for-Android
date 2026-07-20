@@ -1,5 +1,6 @@
 package com.urlxl.mail
 
+import okhttp3.OkHttpClient
 import okhttp3.Request
 
 const val HEADER_DEVICE_ID = "X-Kypost-Device-Id"
@@ -14,3 +15,15 @@ const val HEADER_DEVICE_SECRET = "X-Kypost-Device-Secret"
  */
 fun Request.Builder.pairingAuthHeaders(deviceId: String, deviceSecret: String): Request.Builder =
     header(HEADER_DEVICE_ID, deviceId).header(HEADER_DEVICE_SECRET, deviceSecret)
+
+/**
+ * Shared client for every request that carries [pairingAuthHeaders]. Redirect-following is
+ * disabled: OkHttp only strips the standard Authorization header on a cross-host redirect, not
+ * our custom device-id/secret headers, so a malicious or compromised paired server could
+ * otherwise 3xx-redirect a request to an arbitrary host and receive the device's bearer
+ * credential.
+ */
+fun pairingHttpClient(): OkHttpClient = OkHttpClient.Builder()
+    .followRedirects(false)
+    .followSslRedirects(false)
+    .build()

@@ -2,12 +2,12 @@ package com.urlxl.mail.pgp
 
 import com.urlxl.mail.executeSync
 import com.urlxl.mail.pairingAuthHeaders
+import com.urlxl.mail.pairingHttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /** Outcome of `GET /api/pgp/qr/token` (pairing-authenticated via X-Kypost-Device-Id/X-Kypost-Device-Secret headers). */
@@ -59,7 +59,7 @@ class PgpQrClient(
     private val json: Json = Json { ignoreUnknownKeys = true },
     // Call.Factory (not the concrete OkHttpClient) so tests can inject a fake without a real
     // network call or a MockWebServer dependency; OkHttpClient itself satisfies this interface.
-    private val callFactory: Call.Factory = OkHttpClient.Builder().build(),
+    private val callFactory: Call.Factory = pairingHttpClient(),
 ) {
     suspend fun mintToken(serverUrl: String, deviceId: String, deviceSecret: String): PgpQrTokenResult {
         val base = tokenUrl(serverUrl) ?: return PgpQrTokenResult.Retryable("Server URL is not valid")

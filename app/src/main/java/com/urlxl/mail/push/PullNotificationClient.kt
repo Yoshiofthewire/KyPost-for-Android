@@ -2,12 +2,12 @@ package com.urlxl.mail.push
 
 import com.urlxl.mail.executeSync
 import com.urlxl.mail.pairingAuthHeaders
+import com.urlxl.mail.pairingHttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /** Outcome of a single GET against the pull endpoint. */
@@ -38,7 +38,7 @@ class PullNotificationClient(
     // Call.Factory (not the concrete OkHttpClient) so tests can inject a fake without a real
     // network call or a MockWebServer dependency; OkHttpClient itself satisfies this interface.
     // Mirrors RelayMailSource/ContactSyncClient/GroupsSyncClient/PgpQrClient's callFactory pattern.
-    private val callFactory: Call.Factory = OkHttpClient.Builder().build(),
+    private val callFactory: Call.Factory = pairingHttpClient(),
 ) {
     suspend fun pull(
         pullEndpoint: String,

@@ -2,12 +2,12 @@ package com.urlxl.mail.contacts
 
 import com.urlxl.mail.executeSync
 import com.urlxl.mail.pairingAuthHeaders
+import com.urlxl.mail.pairingHttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 
 sealed class GroupsSyncResult {
@@ -27,7 +27,7 @@ sealed class GroupsSyncResult {
  */
 class GroupsSyncClient(
     private val json: Json = Json { ignoreUnknownKeys = true },
-    private val callFactory: Call.Factory = OkHttpClient.Builder().build(),
+    private val callFactory: Call.Factory = pairingHttpClient(),
 ) {
     suspend fun pull(serverUrl: String, deviceId: String, deviceSecret: String): GroupsSyncResult {
         val base = groupsUrl(serverUrl) ?: return GroupsSyncResult.BadRequest("Server URL is not valid")

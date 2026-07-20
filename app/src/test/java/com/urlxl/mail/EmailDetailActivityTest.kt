@@ -145,6 +145,23 @@ class EmailDetailActivityTest {
         assertEquals(input, stripImportant(input))
     }
 
+    @Test
+    fun stripImportant_removesCssCommentSplitImportant() {
+        assertEquals("color:#000000", stripImportant("color:#000000!/**/important"))
+    }
+
+    @Test
+    fun stripImportant_removesEscapeSplitImportant() {
+        // \49 is the CSS escape for code point 0x49 ("I"), so this decodes to "!Important".
+        assertEquals("color:#000000", stripImportant("""color:#000000!\49 mportant"""))
+    }
+
+    @Test
+    fun stripImportant_doesNotAlterUnrelatedBangText() {
+        val input = "Great job! Hope you're well."
+        assertEquals(input, stripImportant(input))
+    }
+
     // isDarkPalette() itself (the bg-luminance → dark/light classification) calls
     // android.graphics.Color.parseColor, which isn't available in a plain JVM unit test (no
     // Robolectric in this module — see every other test file's Android-framework-free style) —

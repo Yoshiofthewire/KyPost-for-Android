@@ -1,6 +1,10 @@
 package com.urlxl.mail.contacts
 
+import com.urlxl.mail.data.ContactEntity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ContactMappersTest {
@@ -92,5 +96,85 @@ class ContactMappersTest {
         assertEquals(true, selfDto.toEntity().isSelf)
         assertEquals(false, otherDto.toEntity().toDto().isSelf)
         assertEquals(false, otherDto.toEntity().isSelf)
+    }
+
+    // ---- pgpKey fingerprint verification / rotation detection ----
+
+    @Test
+    fun toEntity_firstTimeKey_storesFingerprint_notFlaggedAsRotated() {
+        val dto = ContactDto(uid = "uid-4", fn = "Fresh Contact", pgpKey = TEST_KEY)
+
+        val entity = dto.toEntity(previous = null)
+
+        assertEquals(TEST_KEY_FINGERPRINT, entity.pgpKeyFingerprint)
+        assertFalse(entity.pgpKeyNeedsReverification)
+    }
+
+    @Test
+    fun toEntity_keyUnchangedFromPrevious_notFlaggedAsRotated() {
+        val previous = ContactEntity(uid = "uid-5", rev = 1, fn = "Stable Contact", pgpKeyFingerprint = TEST_KEY_FINGERPRINT)
+        val dto = ContactDto(uid = "uid-5", rev = 2, fn = "Stable Contact", pgpKey = TEST_KEY)
+
+        val entity = dto.toEntity(previous)
+
+        assertEquals(TEST_KEY_FINGERPRINT, entity.pgpKeyFingerprint)
+        assertFalse(entity.pgpKeyNeedsReverification)
+    }
+
+    @Test
+    fun toEntity_keyRotatedFromPrevious_flaggedForReverification() {
+        val previous = ContactEntity(uid = "uid-6", rev = 1, fn = "Rotated Contact", pgpKeyFingerprint = "AAAA BBBB")
+        val dto = ContactDto(uid = "uid-6", rev = 2, fn = "Rotated Contact", pgpKey = TEST_KEY)
+
+        val entity = dto.toEntity(previous)
+
+        assertEquals(TEST_KEY_FINGERPRINT, entity.pgpKeyFingerprint)
+        assertTrue(entity.pgpKeyNeedsReverification)
+    }
+
+    @Test
+    fun toEntity_reverificationFlagStaysSetUntilKeyStabilizes() {
+        val previous = ContactEntity(
+            uid = "uid-7",
+            rev = 1,
+            fn = "Still Unverified",
+            pgpKeyFingerprint = TEST_KEY_FINGERPRINT,
+            pgpKeyNeedsReverification = true,
+        )
+        val dto = ContactDto(uid = "uid-7", rev = 2, fn = "Still Unverified", pgpKey = TEST_KEY)
+
+        val entity = dto.toEntity(previous)
+
+        // Same key as last sync (already flagged) — stays flagged until the user re-verifies;
+        // an unrelated sync of the same key must not silently clear the warning.
+        assertTrue(entity.pgpKeyNeedsReverification)
+    }
+
+    @Test
+    fun toEntity_unparseableKey_storesNoFingerprint() {
+        val dto = ContactDto(uid = "uid-8", fn = "Bad Key", pgpKey = "not a real pgp key")
+
+        val entity = dto.toEntity(previous = null)
+
+        assertNull(entity.pgpKeyFingerprint)
+        assertFalse(entity.pgpKeyNeedsReverification)
+    }
+
+    private companion object {
+        // Same disposable test fixture as PgpFingerprintTest — a throwaway ed25519 key generated
+        // with `gpg --quick-generate-key`, with gpg's own reported fingerprint alongside it.
+        const val TEST_KEY_FINGERPRINT = "164D 5B83 4E7F E927 2DC7 293B 6D78 ABF3 D917 9534"
+        val TEST_KEY = """
+            -----BEGIN PGP PUBLIC KEY BLOCK-----
+
+            mDMEalxKSBYJKwYBBAHaRw8BAQdAaLBvayt/AqeBFCxDOrvjb36gwol5tI+JU+6p
+            vOR9sTO0KVBncEZpbmdlcnByaW50VGVzdCA8dGVzdEBleGFtcGxlLmludmFsaWQ+
+            iJAEExYKADgWIQQWTVuDTn/pJy3HKTtteKvz2ReVNAUCalxKSAIbAwULCQgHAgYV
+            CgkICwIEFgIDAQIeAQIXgAAKCRBteKvz2ReVNAUoAQCi9uhyZCB8aY/iupXHv0j9
+            3HOkEbVmB1B/xRn+xdcu4gEAn2JbiIts/RVYYk8RXwTVp3zrksdrTZ1zBiBUC/ZH
+            TQ8=
+            =+uqe
+            -----END PGP PUBLIC KEY BLOCK-----
+        """.trimIndent()
     }
 }

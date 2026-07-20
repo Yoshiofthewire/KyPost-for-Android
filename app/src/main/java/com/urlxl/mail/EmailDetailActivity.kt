@@ -389,11 +389,40 @@ internal fun buildEmailBodyHtml(bodyToRender: String, palette: ThemePalette, mon
     """.trimIndent()
 }
 
-/** Strips every literal (case-insensitive, whitespace-tolerant) `!important` from [html] — see
- *  [buildEmailBodyHtml]'s doc for why this is what actually closes the override gap for
- *  `!important`-defended email styling. A blunt text-level removal rather than a real CSS/HTML
- *  parse: this app has no HTML parser dependency, the input is untrusted, and correctness only
- *  requires that no `!important` survive anywhere reachable by a CSS declaration (inline `style=`
- *  attributes or an embedded `<style>` block) — over-matching a stray `!important` inside, say, an
- *  HTML comment or unrendered text is harmless, since removing it doesn't change what's displayed. */
-internal fun stripImportant(html: String): String = html.replace(Regex("""\s*!\s*important""", RegexOption.IGNORE_CASE), "")
+// A CSS comment produces zero tokens during tokenization (CSS Syntax §4) and is fully
+// transparent between any two other tokens — including between `!` and `important` — so it
+// must be removed everywhere before the `!important` check below, not just matched around.
+private val CSS_COMMENT = Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL)
+
+// A CSS escape sequence is a backslash followed by 1-6 hex digits, optionally followed by one
+// whitespace terminator (CSS Syntax §4.3.7), and decodes to a single Unicode code point — so a
+// sender can spell any letter of "important" as an escape (e.g. `!\49 mportant` decodes to
+// `!Important`) instead of the literal character.
+private val CSS_ESCAPE = Regex("""\\([0-9a-fA-F]{1,6})\s?""")
+
+// `!` followed by up to 24 characters of letters, whitespace, or CSS escapes — a generous
+// window for "important" plus incidental whitespace/escapes, bounded so we don't scan arbitrarily
+// far into unrelated text after an unrelated `!`.
+private val BANG_CANDIDATE = Regex("""\s*!((?:\\[0-9a-fA-F]{1,6}\s?|[A-Za-z\s]){1,24})""")
+
+/** Strips every `!important` from [html] — see [buildEmailBodyHtml]'s doc for why this is what
+ *  actually closes the override gap for `!important`-defended email styling. Tolerant of the two
+ *  CSS-spec-legal ways a sender can split the token to dodge a plain text search: a CSS comment
+ *  inserted anywhere (removed globally, since a comment has no display semantics to preserve),
+ *  and any letter of "important" written as a CSS escape sequence instead of the literal
+ *  character (decoded only within the captured `!`-prefixed candidate, so escape sequences
+ *  elsewhere in the email body — which do have display semantics — are left untouched). A
+ *  blunt text-level removal rather than a real CSS/HTML parse: this app has no HTML parser
+ *  dependency, the input is untrusted, and correctness only requires that no `!important`
+ *  survive anywhere reachable by a CSS declaration (inline `style=` attributes or an embedded
+ *  `<style>` block) — over-matching a stray `!important` inside, say, an HTML comment or
+ *  unrendered text is harmless, since removing it doesn't change what's displayed. */
+internal fun stripImportant(html: String): String {
+    val withoutComments = html.replace(CSS_COMMENT, "")
+    return BANG_CANDIDATE.replace(withoutComments) { match ->
+        val decoded = CSS_ESCAPE.replace(match.groupValues[1]) { escape ->
+            String(Character.toChars(escape.groupValues[1].toInt(16)))
+        }
+        if (decoded.trim().equals("important", ignoreCase = true)) "" else match.value
+    }
+}

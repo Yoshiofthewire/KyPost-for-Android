@@ -101,11 +101,11 @@ class ContactDetailActivity : AppCompatActivity() {
             // contact's badge is fully determined by its own pgpKey field. See ContactAdapter's
             // contactHasLinkedPgpKey doc for why pgpKey alone isn't enough for the self-contact.
             val selfHasPgpIdentity = if (dto.isSelf) hasPgpIdentity(this@ContactDetailActivity) else null
-            render(dto, selfHasPgpIdentity)
+            render(dto, selfHasPgpIdentity, entity.pgpKeyNeedsReverification)
         }
     }
 
-    private fun render(dto: ContactDto, selfHasPgpIdentity: Boolean?) {
+    private fun render(dto: ContactDto, selfHasPgpIdentity: Boolean?, pgpKeyNeedsReverification: Boolean = false) {
         applyThemedTitle(this, dto.fn.ifBlank { getString(R.string.contacts_edit_title) })
         bindAvatar(this, avatarView, dto.fn, sizeDp = 64)
         nameView.text = dto.fn
@@ -126,7 +126,11 @@ class ContactDetailActivity : AppCompatActivity() {
         val hasKey = contactHasLinkedPgpKey(dto.pgpKey, dto.isSelf, selfHasPgpIdentity)
         pgpBadge.visibility = if (hasKey) View.VISIBLE else View.GONE
         if (hasKey) {
-            pgpBadge.text = getString(R.string.contacts_pgp_badge_visible)
+            pgpBadge.text = if (pgpKeyNeedsReverification) {
+                getString(R.string.contact_status_key_changed)
+            } else {
+                getString(R.string.contacts_pgp_badge_visible)
+            }
             applyStatusBadgeTheme(this, pgpBadge, active = true)
         }
 

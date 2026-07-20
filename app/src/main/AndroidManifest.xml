@@ -68,8 +68,17 @@
 
         <activity
             android:name=".push.PushPairingActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
+        <!-- Thin, stateless forwarder for kypost://native-pair — see PushPairingLinkActivity
+             for why the exported surface is split from PushPairingActivity itself. -->
+        <activity
+            android:name=".push.PushPairingLinkActivity"
             android:exported="true"
-            android:launchMode="singleTop">
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 

@@ -1,44 +1,63 @@
 package com.urlxl.mail.contacts
 
 import com.urlxl.mail.data.ContactEntity
+import com.urlxl.mail.pgp.PgpFingerprint
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 private val mapperJson = Json { ignoreUnknownKeys = true }
 
-fun ContactDto.toEntity(): ContactEntity = ContactEntity(
-    uid = uid,
-    rev = rev,
-    createdAt = createdAt,
-    updatedAt = updatedAt,
-    fn = fn,
-    givenName = givenName,
-    familyName = familyName,
-    middleName = middleName,
-    prefix = prefix,
-    suffix = suffix,
-    nickname = nickname,
-    org = org,
-    title = title,
-    notes = notes,
-    birthday = birthday,
-    emailsJson = mapperJson.encodeToString(emails),
-    phonesJson = mapperJson.encodeToString(phones),
-    addressesJson = mapperJson.encodeToString(addresses),
-    groupIDsJson = mapperJson.encodeToString(groupIDs),
-    photoRef = photoRef,
-    pgpKey = pgpKey,
-    imsJson = mapperJson.encodeToString(ims),
-    websitesJson = mapperJson.encodeToString(websites),
-    relationsJson = mapperJson.encodeToString(relations),
-    eventsJson = mapperJson.encodeToString(events),
-    phoneticGivenName = phoneticGivenName,
-    phoneticFamilyName = phoneticFamilyName,
-    department = department,
-    customFieldsJson = mapperJson.encodeToString(customFields),
-    pronouns = pronouns,
-    isSelf = isSelf,
-)
+/**
+ * [previous] is the contact's existing row, if any, fetched by the caller before this sync
+ * delta is applied. `pgpKey` arrives via ordinary two-way contact sync — unlike the QR
+ * key-exchange flow, which independently recomputes and requires user confirmation of a
+ * fingerprint before ever trusting a key — so this is the one place that same discipline is
+ * applied to sync-derived keys: the fingerprint is (re)computed locally from the key bytes, and
+ * a previously-verified fingerprint changing out from under the contact sets
+ * [ContactEntity.pgpKeyNeedsReverification] instead of silently updating the trust badge.
+ */
+fun ContactDto.toEntity(previous: ContactEntity? = null): ContactEntity {
+    val newFingerprint = pgpKey?.let { PgpFingerprint.compute(it) }
+    val previousFingerprint = previous?.pgpKeyFingerprint
+    val keyRotated = previousFingerprint != null && newFingerprint != null && previousFingerprint != newFingerprint
+    val stillNeedsReverification = previous?.pgpKeyNeedsReverification == true && newFingerprint == previousFingerprint
+
+    return ContactEntity(
+        uid = uid,
+        rev = rev,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        fn = fn,
+        givenName = givenName,
+        familyName = familyName,
+        middleName = middleName,
+        prefix = prefix,
+        suffix = suffix,
+        nickname = nickname,
+        org = org,
+        title = title,
+        notes = notes,
+        birthday = birthday,
+        emailsJson = mapperJson.encodeToString(emails),
+        phonesJson = mapperJson.encodeToString(phones),
+        addressesJson = mapperJson.encodeToString(addresses),
+        groupIDsJson = mapperJson.encodeToString(groupIDs),
+        photoRef = photoRef,
+        pgpKey = pgpKey,
+        imsJson = mapperJson.encodeToString(ims),
+        websitesJson = mapperJson.encodeToString(websites),
+        relationsJson = mapperJson.encodeToString(relations),
+        eventsJson = mapperJson.encodeToString(events),
+        phoneticGivenName = phoneticGivenName,
+        phoneticFamilyName = phoneticFamilyName,
+        department = department,
+        customFieldsJson = mapperJson.encodeToString(customFields),
+        pronouns = pronouns,
+        isSelf = isSelf,
+        pgpKeyFingerprint = newFingerprint ?: previousFingerprint,
+        pgpKeyNeedsReverification = keyRotated || stillNeedsReverification,
+    )
+}
 
 fun ContactEntity.toDto(): ContactDto = ContactDto(
     uid = uid,

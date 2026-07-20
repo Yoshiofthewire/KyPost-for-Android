@@ -54,7 +54,11 @@ class ContactAdapter(
 
             val hasKey = contactHasLinkedPgpKey(contact.pgpKey, contact.isSelf, selfHasPgpIdentity)
             statusBadge.setText(
-                if (hasKey) R.string.contact_status_secure_key else R.string.contact_status_no_key,
+                when {
+                    hasKey && contact.pgpKeyNeedsReverification -> R.string.contact_status_key_changed
+                    hasKey -> R.string.contact_status_secure_key
+                    else -> R.string.contact_status_no_key
+                },
             )
             applyStatusBadgeTheme(itemView.context, statusBadge, active = hasKey)
 
