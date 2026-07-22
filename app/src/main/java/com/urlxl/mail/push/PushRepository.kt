@@ -57,6 +57,16 @@ class PushRepository(private val context: Context) {
     fun pairingForAuthenticatedCall(): PairingData? =
         securePairingStore.pairingSnapshot(SecurityRuntime.graph(context).appLockManager.cachedCredentialKey())
 
+    /** The TOFU TLS pin captured right after the first successful pairing, or null if none has
+     *  been captured yet (never paired, or paired before this feature existed). Read fresh on
+     *  every call — never cached by the caller — since it can change on re-pairing. */
+    fun currentTlsPin(): String? = securePairingStore.currentTlsPin()
+
+    /** Persist the TLS pin captured on a just-succeeded pairing/registration call. See
+     *  [SecurePairingStore.saveTlsPin]; only [com.urlxl.mail.push.PushSyncCoordinator]
+     *  .attemptPairing calls this, not every routine registration resync. */
+    suspend fun saveTlsPin(pin: String) = securePairingStore.saveTlsPin(pin)
+
     /** Saves pairing data, wrapping `deviceSecret` behind the currently-cached credential key if
      *  "require unlock to receive push/MFA" is on and a PIN-derived key is available this session
      *  (see [com.urlxl.mail.security.AppLockManager.cachedCredentialKey]) — otherwise stores it

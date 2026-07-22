@@ -26,6 +26,7 @@ private const val KEY_PAIRED_AT = "pair_paired_at"
 private const val KEY_DEVICE_SECRET_CIPHERTEXT = "pair_device_secret_ciphertext"
 private const val KEY_DEVICE_SECRET_SALT = "pair_device_secret_salt"
 private const val KEY_DEVICE_SECRET_IV = "pair_device_secret_iv"
+private const val KEY_TLS_PIN = "pair_tls_spki_pin"
 
 /**
  * Holds pairing proof material (device secret, pairing token) in a Keystore-backed
@@ -89,6 +90,20 @@ class SecurePairingStore(context: Context) {
      *  session — and still needs re-wrapping. */
     fun isDeviceSecretWrapped(): Boolean = prefs.contains(KEY_DEVICE_SECRET_CIPHERTEXT)
 
+    /** Persists the TOFU (trust-on-first-use) TLS certificate pin captured right after the
+     *  first successful pairing/registration call (see [com.urlxl.mail.push.PushSyncCoordinator]
+     *  .attemptPairing and [com.urlxl.mail.security.SpkiPinner]) — never overwritten on later
+     *  requests, only on a fresh pairing (initial or after [clearPairing] + re-pair). */
+    suspend fun saveTlsPin(pin: String) {
+        withContext(Dispatchers.IO) {
+            prefs.edit().putString(KEY_TLS_PIN, pin).commit()
+        }
+    }
+
+    /** The currently enforced TLS pin, or null if this device has never captured one (not yet
+     *  paired, or paired before this feature existed). */
+    fun currentTlsPin(): String? = prefs.getString(KEY_TLS_PIN, null)
+
     suspend fun clearPairing() {
         withContext(Dispatchers.IO) {
             prefs.edit()
@@ -102,6 +117,7 @@ class SecurePairingStore(context: Context) {
                 .remove(KEY_PAIRING_TOKEN)
                 .remove(KEY_DEVICE_ID)
                 .remove(KEY_PAIRED_AT)
+                .remove(KEY_TLS_PIN)
                 .commit()
         }
         _pairing.value = null
