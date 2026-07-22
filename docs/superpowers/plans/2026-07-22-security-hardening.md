@@ -1814,6 +1814,13 @@ class SecuritySettingsActivity : AppCompatActivity() {
     private lateinit var appLockStore: AppLockStore
     private lateinit var lockSwitch: Switch
     private lateinit var biometricSwitch: Switch
+    // Suppresses lockSwitch's listener during a programmatic revert (setup cancelled/failed) —
+    // without this, reverting isChecked re-fires the listener into the OPPOSITE flow (e.g.
+    // reverting to "off" after a cancelled PIN-set pops up "enter PIN to disable", which always
+    // fails since no PIN was set, bouncing the user into an unbreakable dialog ping-pong, and
+    // worse, letting a wrong-PIN "disable" attempt bounce into promptSetPin(), which sets a new
+    // PIN unconditionally — bypassing the "must know the current PIN to disable" guarantee).
+    private var suppressLockToggleListener = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -1847,7 +1854,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
         container.addView(biometricSwitch)
 
-        lockSwitch.setOnCheckedChangeListener { _, checked -> onLockToggle(checked) }
+        lockSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressLockToggleListener) return@setOnCheckedChangeListener
+            onLockToggle(checked)
+        }
         biometricSwitch.setOnCheckedChangeListener { _, checked -> appLockStore.setBiometricEnabled(checked) }
 
         scrollView.addView(container)
@@ -1861,6 +1871,13 @@ class SecuritySettingsActivity : AppCompatActivity() {
         } else {
             promptDisableLock()
         }
+    }
+
+    /** Reverts [lockSwitch] without re-triggering [onLockToggle] — see [suppressLockToggleListener]. */
+    private fun revertLockSwitch(checked: Boolean) {
+        suppressLockToggleListener = true
+        lockSwitch.isChecked = checked
+        suppressLockToggleListener = false
     }
 
     private fun promptSetPin() {
@@ -1878,10 +1895,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
                     appLockStore.setLockEnabled(true)
                     biometricSwitch.isEnabled = true
                 } else {
-                    lockSwitch.isChecked = false
+                    revertLockSwitch(false)
                 }
             }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> lockSwitch.isChecked = false }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> revertLockSwitch(false) }
             .setCancelable(false)
             .show()
     }
@@ -1901,10 +1918,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
                         AppRestart.relaunch(this@SecuritySettingsActivity)
                     }
                 } else {
-                    lockSwitch.isChecked = true
+                    revertLockSwitch(true)
                 }
             }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> lockSwitch.isChecked = true }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> revertLockSwitch(true) }
             .setCancelable(false)
             .show()
     }
@@ -2038,7 +2055,7 @@ Also update `onLockToggle`/`promptDisableLock`'s success paths to keep `hostileL
             AppRestart.relaunch(this@SecuritySettingsActivity)
         }
     } else {
-        lockSwitch.isChecked = true
+        revertLockSwitch(true)
     }
 }
 ```
