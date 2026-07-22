@@ -7,6 +7,9 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 import com.urlxl.mail.R
 import com.urlxl.mail.applyThemeToActivity
 import kotlinx.coroutines.launch
@@ -36,6 +39,10 @@ class UnlockActivity : AppCompatActivity() {
         errorText = findViewById(R.id.unlockErrorText)
         submitButton = findViewById(R.id.unlockSubmitButton)
         submitButton.setOnClickListener { attemptUnlock() }
+
+        if (AppLockStore(this).isBiometricEnabled()) {
+            showBiometricPromptIfAvailable()
+        }
     }
 
     override fun onResume() {
@@ -84,6 +91,33 @@ class UnlockActivity : AppCompatActivity() {
                 errorText.visibility = View.GONE
             }
         }.start()
+    }
+
+    private fun showBiometricPromptIfAvailable() {
+        val biometricManager = BiometricManager.from(this)
+        val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+        if (canAuthenticate != BiometricManager.BIOMETRIC_SUCCESS) return
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.unlock_title))
+            .setNegativeButtonText(getString(R.string.unlock_use_pin_button))
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .build()
+
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    appLockManager.unlockWithBiometric()
+                    finish()
+                }
+                // onAuthenticationError (includes the user tapping "Use PIN") and
+                // onAuthenticationFailed both just leave the always-visible PIN field as the
+                // fallback — no separate handling needed.
+            },
+        )
+        prompt.authenticate(promptInfo)
     }
 
     private fun restartToFirstRun() {

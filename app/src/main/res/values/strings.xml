@@ -255,4 +255,5 @@
     <string name="unlock_button">Unlock</string>
     <string name="unlock_wrong_pin">Wrong PIN</string>
     <string name="unlock_locked_out">Too many attempts — try again in %1$s</string>
+    <string name="unlock_use_pin_button">Use PIN</string>
 </resources>
