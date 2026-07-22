@@ -2614,11 +2614,15 @@ git commit -m "android: cache PIN-derived credential key for an unlocked session
 
 **Files:**
 - Modify: `app/src/main/java/com/urlxl/mail/push/PushRepository.kt`
+- Modify: `app/src/main/java/com/urlxl/mail/security/AppLockManager.kt`
 - Modify: `app/src/main/java/com/urlxl/mail/security/SecuritySettingsActivity.kt`
 - Modify: `app/src/main/res/values/strings.xml`
 
 **Interfaces:**
-- Consumes: `SecurePairingStore.pairingSnapshot`/`savePairing` (Task 19), `AppLockManager.cachedCredentialKey()` (Task 20), `SecurityGraph` (Task 13).
+- Consumes: `SecurePairingStore.pairingSnapshot`/`savePairing` (Task 19), `AppLockManager.cachedCredentialKey()` (Task 20), `SecurityRuntime` (Task 13).
+- Produces: `AppLockManager.deriveAndCacheCredentialKey(pin: String): Boolean` (new — see Step 5 below).
+
+**Important correctness note found during this plan's own review (Task 20):** the registration-time wrapping in Step 4 alone is not sufficient. A user who already has a working pairing and only *later* turns toggle 3 on would have their existing `deviceSecret` sitting unwrapped indefinitely — nothing re-saves it. Worse, turning toggle 3 back *off* would leave the stored secret wrapped with no code path that ever unwraps it, permanently breaking authentication once the app relocks (since `cachedCredentialKey()` goes back to null once the gate is reported disabled). Both directions must re-derive the key on the spot (via a fresh PIN entry, since the app being merely "unlocked" doesn't guarantee a PIN-derived key is cached — the session may have been unlocked via biometric) and immediately re-save the current pairing in the matching form. Steps 5-6 below implement this; this supersedes the simpler confirm-only flow this task originally sketched.
 
 No new automated test: this wires already-tested pieces (`SecurePairingStoreCredentialGateTest`, `AppLockManagerTest`) together at the one call site that matters (`PushRepository`'s reactive `pairing` state) — an end-to-end test would need a real paired device and background service lifecycle, out of proportion for this task.
 
@@ -2678,12 +2682,49 @@ if (credentialKey != null && credentialSalt != null) {
 }
 ```
 
-- [ ] **Step 5: Add toggle 3 to SecuritySettingsActivity**
+- [ ] **Step 5: Add on-demand key derivation to AppLockManager**
 
-In `SecuritySettingsActivity.onCreate`, after the Hostile Location Protection block:
+Read the current `app/src/main/java/com/urlxl/mail/security/AppLockManager.kt` in full (post-Task-20) first. It currently has a private `cacheCredentialKeyIfEnabled(pin: String)`, called only from `attemptPin`'s success branch and gated on `state.isCredentialPinGateEnabled()`. Toggling the gate itself has no "successful unlock" event to hang off of — the app is already unlocked when the user flips the switch, and if they unlocked via biometric this session, no PIN-derived key exists yet to reuse. Refactor to extract the shared derive-or-reuse-salt logic, and add a new public method that works regardless of the gate's current enabled state (since it's used to transition the gate itself):
 
 ```kotlin
-val credentialGateSwitch = Switch(this).apply {
+fun deriveAndCacheCredentialKey(pin: String): Boolean {
+    if (!state.verifyPin(pin)) return false
+    credentialKey = deriveKeyUsingPersistedSalt(pin)
+    return true
+}
+
+private fun cacheCredentialKeyIfEnabled(pin: String) {
+    if (!state.isCredentialPinGateEnabled()) return
+    credentialKey = deriveKeyUsingPersistedSalt(pin)
+}
+
+private fun deriveKeyUsingPersistedSalt(pin: String): SecretKeySpec {
+    val salt = state.credentialSalt() ?: CredentialCipher.randomSalt().also { state.setCredentialSalt(it) }
+    return CredentialCipher.deriveKey(pin, salt)
+}
+```
+
+Replace the body of the existing `cacheCredentialKeyIfEnabled` with the two-liner above (delegating to the new shared helper) — do not duplicate the salt-derivation logic. Run the full `AppLockManagerTest` suite (`./gradlew :app:testDebugUnitTest --tests "com.urlxl.mail.security.AppLockManagerTest"`) to confirm all 10 existing tests still pass unchanged (this is a refactor of already-tested logic, not new behavior on the `attemptPin` path).
+
+- [ ] **Step 6: Add toggle 3 to SecuritySettingsActivity, with PIN-gated enable/disable and pairing re-wrap**
+
+In `SecuritySettingsActivity.onCreate`, after the Hostile Location Protection block, add the switch as a `lateinit var` field (mirroring `lockSwitch`/`hostileLocationSwitch`) so it can be reverted programmatically without re-triggering its own listener — same re-entrancy hazard as `lockSwitch` in Task 16, guarded the same way:
+
+```kotlin
+// class-level field, alongside lockSwitch/hostileLocationSwitch/suppressLockToggleListener:
+private lateinit var credentialGateSwitch: Switch
+private var suppressCredentialGateListener = false
+
+private fun revertCredentialGateSwitch(checked: Boolean) {
+    suppressCredentialGateListener = true
+    credentialGateSwitch.isChecked = checked
+    suppressCredentialGateListener = false
+}
+```
+
+```kotlin
+// in onCreate, after the Hostile Location Protection block:
+credentialGateSwitch = Switch(this).apply {
     text = getString(R.string.security_credential_gate_title)
     isChecked = appLockStore.isCredentialPinGateEnabled()
     isEnabled = appLockStore.isLockEnabled()
@@ -2696,30 +2737,83 @@ container.addView(
         setPadding(0, 4, 0, 16)
     },
 )
-credentialGateSwitch.setOnCheckedChangeListener { button, checked ->
-    if (checked) {
-        confirmEnableCredentialGate(button as Switch)
-    } else {
-        appLockStore.setCredentialPinGateEnabled(false)
-    }
-}
-
-private fun confirmEnableCredentialGate(switch: Switch) {
-    AlertDialog.Builder(this)
-        .setTitle(R.string.security_credential_gate_warning_title)
-        .setMessage(R.string.security_credential_gate_warning_body)
-        .setPositiveButton(R.string.security_credential_gate_warning_confirm) { _, _ ->
-            appLockStore.setCredentialPinGateEnabled(true)
-        }
-        .setNegativeButton(android.R.string.cancel) { _, _ -> switch.isChecked = false }
-        .setCancelable(false)
-        .show()
+credentialGateSwitch.setOnCheckedChangeListener { _, checked ->
+    if (suppressCredentialGateListener) return@setOnCheckedChangeListener
+    if (checked) confirmEnableCredentialGate() else confirmDisableCredentialGate()
 }
 ```
 
-(`confirmEnableCredentialGate` is a new private method on the Activity, alongside `promptSetPin`/`promptDisableLock`.)
+```kotlin
+private fun confirmEnableCredentialGate() {
+    AlertDialog.Builder(this)
+        .setTitle(R.string.security_credential_gate_warning_title)
+        .setMessage(R.string.security_credential_gate_warning_body)
+        .setPositiveButton(R.string.security_credential_gate_warning_confirm) { _, _ -> promptCredentialGatePin(enabling = true) }
+        .setNegativeButton(android.R.string.cancel) { _, _ -> revertCredentialGateSwitch(false) }
+        .setCancelable(false)
+        .show()
+}
 
-- [ ] **Step 6: Add strings**
+private fun confirmDisableCredentialGate() {
+    promptCredentialGatePin(enabling = false)
+}
+
+/** Both directions need the PIN re-entered here (not just "the app happens to be unlocked
+ *  right now") to guarantee a fresh PIN-derived key is available to actually re-wrap or
+ *  unwrap the current pairing's deviceSecret in the same step — see this task's correctness
+ *  note about why a confirm-only flow isn't sufficient. */
+private fun promptCredentialGatePin(enabling: Boolean) {
+    val pinField = android.widget.EditText(this).apply {
+        inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+        hint = getString(R.string.unlock_pin_hint)
+    }
+    AlertDialog.Builder(this)
+        .setTitle(R.string.security_credential_gate_pin_title)
+        .setView(pinField)
+        .setPositiveButton(R.string.security_set_pin_confirm) { _, _ ->
+            val appLockManager = SecurityRuntime.graph(this).appLockManager
+            if (appLockManager.deriveAndCacheCredentialKey(pinField.text.toString())) {
+                appLockStore.setCredentialPinGateEnabled(enabling)
+                if (enabling) rewrapCurrentPairing() else unwrapCurrentPairing()
+            } else {
+                revertCredentialGateSwitch(!enabling)
+            }
+        }
+        .setNegativeButton(android.R.string.cancel) { _, _ -> revertCredentialGateSwitch(!enabling) }
+        .setCancelable(false)
+        .show()
+}
+
+/** Re-saves the currently-paired credentials wrapped behind the just-derived key — without
+ *  this, turning the gate on would only take effect for pairing data saved AFTER this point
+ *  (a future re-pair), leaving an existing pairing's deviceSecret unwrapped indefinitely. */
+private fun rewrapCurrentPairing() {
+    lifecycleScope.launch {
+        val securePairingStore = com.urlxl.mail.push.SecurePairingStore(this@SecuritySettingsActivity)
+        val currentPairing = securePairingStore.pairing.value ?: return@launch
+        val appLockManager = SecurityRuntime.graph(this@SecuritySettingsActivity).appLockManager
+        val credentialKey = appLockManager.cachedCredentialKey() ?: return@launch
+        val credentialSalt = appLockStore.credentialSalt() ?: return@launch
+        securePairingStore.savePairing(currentPairing, credentialKey, credentialSalt)
+    }
+}
+
+/** The inverse of [rewrapCurrentPairing] — without this, turning the gate back off would leave
+ *  deviceSecret stored wrapped with no code path that ever unwraps it, permanently breaking
+ *  authentication the next time the app locks (cachedCredentialKey() goes back to null once the
+ *  gate reports disabled, and resolveDeviceSecret has no other way to read the wrapped value). */
+private fun unwrapCurrentPairing() {
+    lifecycleScope.launch {
+        val securePairingStore = com.urlxl.mail.push.SecurePairingStore(this@SecuritySettingsActivity)
+        val appLockManager = SecurityRuntime.graph(this@SecuritySettingsActivity).appLockManager
+        val credentialKey = appLockManager.cachedCredentialKey() ?: return@launch
+        val currentPairing = securePairingStore.pairingSnapshot(credentialKey) ?: return@launch
+        securePairingStore.savePairing(currentPairing)
+    }
+}
+```
+
+- [ ] **Step 7: Add strings**
 
 ```xml
 <string name="security_credential_gate_title">Require unlock to receive push/MFA</string>
@@ -2727,21 +2821,22 @@ private fun confirmEnableCredentialGate(switch: Switch) {
 <string name="security_credential_gate_warning_title">This disables background notifications while locked</string>
 <string name="security_credential_gate_warning_body">While this is on, you will not receive new-mail push notifications or MFA approval requests until you open the app and enter your PIN. Turn this on only if you understand that tradeoff.</string>
 <string name="security_credential_gate_warning_confirm">Turn on anyway</string>
+<string name="security_credential_gate_pin_title">Enter your PIN to continue</string>
 ```
 
-- [ ] **Step 7: Build**
+- [ ] **Step 8: Build**
 
 Run: `./gradlew :app:assembleDebug`
 Expected: `BUILD SUCCESSFUL`
 
-- [ ] **Step 8: Manually verify**
+- [ ] **Step 9: Manually verify**
 
-Manual check: enable toggle 3, background the app, send a test push/MFA approval from the server — confirm no notification arrives. Reopen and unlock the app — confirm normal sync resumes (via the existing `KyPostApp.onStart` pull/sync calls) without any additional user action.
+Manual check: with an existing pairing, enable toggle 3 (entering the correct PIN when prompted) — confirm the setting sticks after backgrounding/foregrounding the app (re-unlocking with the PIN). Background the app, send a test push/MFA approval from the server — confirm no notification arrives. Reopen and unlock the app via PIN — confirm normal sync resumes (via the existing `KyPostApp.onStart` pull/sync calls) without any additional user action. Then turn toggle 3 back off (entering the PIN again when prompted) — confirm push/MFA delivery resumes normally afterward, proving the pairing was genuinely unwrapped back to a usable state and not left stuck.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add app/src/main/java/com/urlxl/mail/push/PushRepository.kt app/src/main/java/com/urlxl/mail/security/SecuritySettingsActivity.kt app/src/main/res/values/strings.xml
+git add app/src/main/java/com/urlxl/mail/push/PushRepository.kt app/src/main/java/com/urlxl/mail/security/AppLockManager.kt app/src/main/java/com/urlxl/mail/security/SecuritySettingsActivity.kt app/src/main/res/values/strings.xml
 git commit -m "android: wire credential PIN-gate into push auth and settings UI"
 ```
 
