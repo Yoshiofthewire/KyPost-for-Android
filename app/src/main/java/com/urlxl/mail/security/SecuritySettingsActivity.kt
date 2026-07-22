@@ -24,6 +24,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
     private lateinit var appLockStore: AppLockStore
     private lateinit var lockSwitch: Switch
     private lateinit var biometricSwitch: Switch
+    private var suppressLockToggleListener = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,7 +58,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
         container.addView(biometricSwitch)
 
-        lockSwitch.setOnCheckedChangeListener { _, checked -> onLockToggle(checked) }
+        lockSwitch.setOnCheckedChangeListener { _, checked ->
+            if (suppressLockToggleListener) return@setOnCheckedChangeListener
+            onLockToggle(checked)
+        }
         biometricSwitch.setOnCheckedChangeListener { _, checked -> appLockStore.setBiometricEnabled(checked) }
 
         scrollView.addView(container)
@@ -71,6 +75,17 @@ class SecuritySettingsActivity : AppCompatActivity() {
         } else {
             promptDisableLock()
         }
+    }
+
+    /**
+     * Reverts [lockSwitch] to [checked] without re-firing its listener. Used whenever we undo the
+     * user's toggle because the set-PIN or disable-lock flow was cancelled or failed — never for
+     * the legitimate forward-progress state changes (those call appLockStore directly).
+     */
+    private fun revertLockSwitch(checked: Boolean) {
+        suppressLockToggleListener = true
+        lockSwitch.isChecked = checked
+        suppressLockToggleListener = false
     }
 
     private fun promptSetPin() {
@@ -88,10 +103,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
                     appLockStore.setLockEnabled(true)
                     biometricSwitch.isEnabled = true
                 } else {
-                    lockSwitch.isChecked = false
+                    revertLockSwitch(false)
                 }
             }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> lockSwitch.isChecked = false }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> revertLockSwitch(false) }
             .setCancelable(false)
             .show()
     }
@@ -111,10 +126,10 @@ class SecuritySettingsActivity : AppCompatActivity() {
                         AppRestart.relaunch(this@SecuritySettingsActivity)
                     }
                 } else {
-                    lockSwitch.isChecked = true
+                    revertLockSwitch(true)
                 }
             }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> lockSwitch.isChecked = true }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> revertLockSwitch(true) }
             .setCancelable(false)
             .show()
     }
