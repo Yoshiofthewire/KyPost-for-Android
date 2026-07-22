@@ -265,4 +265,7 @@
     <string name="security_set_pin_title">Set a 6-digit PIN</string>
     <string name="security_set_pin_confirm">Confirm</string>
     <string name="security_confirm_disable_title">Enter your PIN to turn this off</string>
+    <string name="security_hostile_location_title">Hostile Location Protection</string>
+    <string name="security_hostile_location_intro">No mail, contacts, or attachments are cached on this device — everything is fetched fresh from the server each time. Turning this on immediately wipes what\'s cached now and restarts the app.</string>
+    <string name="security_hostile_location_requires_lock">Requires Require Unlock to Open.</string>
 </resources>

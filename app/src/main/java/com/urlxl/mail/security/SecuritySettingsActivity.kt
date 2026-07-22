@@ -58,6 +58,29 @@ class SecuritySettingsActivity : AppCompatActivity() {
         }
         container.addView(biometricSwitch)
 
+        val hostileLocationSettings = HostileLocationSettings(this)
+        val hostileLocationSwitch = Switch(this).apply {
+            text = getString(R.string.security_hostile_location_title)
+            isChecked = hostileLocationSettings.isEnabled()
+            isEnabled = appLockStore.isLockEnabled()
+        }
+        container.addView(hostileLocationSwitch)
+        container.addView(
+            TextView(this).apply {
+                text = if (appLockStore.isLockEnabled()) {
+                    getString(R.string.security_hostile_location_intro)
+                } else {
+                    getString(R.string.security_hostile_location_requires_lock)
+                }
+                textSize = 13f
+                setPadding(0, 4, 0, 16)
+            },
+        )
+        hostileLocationSwitch.setOnCheckedChangeListener { _, checked ->
+            hostileLocationSettings.setEnabled(checked)
+            AppRestart.relaunch(this)
+        }
+
         lockSwitch.setOnCheckedChangeListener { _, checked ->
             if (suppressLockToggleListener) return@setOnCheckedChangeListener
             onLockToggle(checked)
@@ -121,6 +144,7 @@ class SecuritySettingsActivity : AppCompatActivity() {
             .setView(pinField)
             .setPositiveButton(R.string.security_set_pin_confirm) { _, _ ->
                 if (appLockStore.verifyPin(pinField.text.toString())) {
+                    HostileLocationSettings(this@SecuritySettingsActivity).setEnabled(false)
                     lifecycleScope.launch {
                         SecurityWipe.wipeAndResetApp(this@SecuritySettingsActivity)
                         AppRestart.relaunch(this@SecuritySettingsActivity)
