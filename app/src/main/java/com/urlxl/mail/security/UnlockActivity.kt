@@ -30,7 +30,7 @@ class UnlockActivity : AppCompatActivity() {
         applyThemeToActivity(this)
         window.setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE, android.view.WindowManager.LayoutParams.FLAG_SECURE)
 
-        appLockManager = SecurityGraph.of(this).appLockManager
+        appLockManager = SecurityRuntime.graph(this).appLockManager
 
         pinField = findViewById(R.id.unlockPinField)
         errorText = findViewById(R.id.unlockErrorText)

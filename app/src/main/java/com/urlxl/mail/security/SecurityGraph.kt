@@ -9,10 +9,10 @@ class SecurityGraph(context: Context) {
     val appLockManager: AppLockManager = AppLockManager(AppLockStore(appContext)) {
         runBlocking { SecurityWipe.wipeAndResetApp(appContext) }
     }
+}
 
-    companion object {
-        private val holder = SingletonGraph(::SecurityGraph)
+object SecurityRuntime {
+    private val holder = SingletonGraph(::SecurityGraph)
 
-        fun of(context: Context): SecurityGraph = holder.get(context)
-    }
+    fun graph(context: Context): SecurityGraph = holder.get(context)
 }
