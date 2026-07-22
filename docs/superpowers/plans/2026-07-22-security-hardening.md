@@ -35,7 +35,7 @@
 In `gradle/libs.versions.toml`, add to `[versions]` (near `securityCrypto`):
 
 ```toml
-biometric = "1.4.0"
+biometric = "1.1.0"
 ```
 
 Add to `[libraries]` (near `androidx-security-crypto`):
