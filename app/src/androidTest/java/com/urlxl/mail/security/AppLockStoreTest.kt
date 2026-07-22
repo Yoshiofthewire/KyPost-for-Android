@@ -63,4 +63,31 @@ class AppLockStoreTest {
         assertFalse(fresh.verifyPin("123456"))
         assertEquals(1, fresh.incrementFailedAttempts())
     }
+
+    @Test
+    fun corruptedKeyset_doesNotCrash_resetsToUnlockedAndStaysUsable() {
+        val store = AppLockStore(context)
+        store.setPin("123456")
+        store.setLockEnabled(true)
+
+        val rawPrefs = context.getSharedPreferences("app_lock_secure", android.content.Context.MODE_PRIVATE)
+        val valueKeysetKey = "__androidx_security_crypto_encrypted_prefs_value_keyset__"
+        val originalKeyset = rawPrefs.getString(valueKeysetKey, null)
+        assertTrue("expected an existing value keyset to corrupt", !originalKeyset.isNullOrEmpty())
+        val corrupted = originalKeyset!!.toCharArray().also { chars ->
+            // Flip a handful of chars mid-string so the keyset is still non-blank but its AEAD
+            // ciphertext/tag no longer verifies against the real Keystore key.
+            for (i in chars.indices step 7) chars[i] = if (chars[i] == 'A') 'B' else 'A'
+        }.concatToString()
+        rawPrefs.edit().putString(valueKeysetKey, corrupted).commit()
+
+        // Must not throw despite the corrupted keyset (this line crashed before the fix).
+        val recovered = AppLockStore(context)
+
+        assertFalse("corrupted store should reset to unlocked, not stale/garbage data", recovered.isLockEnabled())
+
+        // The reset must leave a genuinely working store behind, not just a non-crashing shell.
+        recovered.setPin("654321")
+        assertTrue(AppLockStore(context).verifyPin("654321"))
+    }
 }

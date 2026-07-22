@@ -96,6 +96,21 @@ class AppLockStore(context: Context) : AppLockState {
     }
 
     private fun buildEncryptedPrefs(appContext: Context): SharedPreferences {
+        return try {
+            createEncryptedPrefs(appContext)
+        } catch (e: Exception) {
+            // The Keystore-backed key can become unable to decrypt the stored keyset (e.g. OS-level
+            // key invalidation) — that's unrecoverable, and it happens in the init path, so an
+            // uncaught failure here crashes the app on every launch. Reset to a fresh, empty
+            // encrypted file instead; isLockEnabled() then returns false and the user can set up
+            // lock again, or the lockout can continue to work if the app was already locked.
+            android.util.Log.e("AppLockStore", "Encrypted app-lock store unreadable, resetting", e)
+            appContext.deleteSharedPreferences(ENCRYPTED_PREFS_FILE_NAME)
+            createEncryptedPrefs(appContext)
+        }
+    }
+
+    private fun createEncryptedPrefs(appContext: Context): SharedPreferences {
         val masterKey = MasterKey.Builder(appContext)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
