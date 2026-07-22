@@ -145,6 +145,10 @@
             android:launchMode="singleInstance"
             android:excludeFromRecents="true" />
 
+        <activity
+            android:name=".security.SecuritySettingsActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

@@ -13,6 +13,7 @@
     <string name="menu_keywords">Keywords</string>
     <string name="menu_themes">Themes</string>
     <string name="menu_pairing">Pairing</string>
+    <string name="menu_security">Security</string>
     <string name="menu_about">About</string>
     <string name="about_title">KyPost</string>
     <string name="about_version_badge">v%1$s</string>
@@ -256,4 +257,12 @@
     <string name="unlock_wrong_pin">Wrong PIN</string>
     <string name="unlock_locked_out">Too many attempts — try again in %1$s</string>
     <string name="unlock_use_pin_button">Use PIN</string>
+
+    <string name="security_settings_title">Security</string>
+    <string name="security_require_unlock_title">Require Unlock to Open</string>
+    <string name="security_require_unlock_intro">Require a PIN (or biometric) every time the app opens or returns from the background.</string>
+    <string name="security_use_biometric_title">Use biometric unlock</string>
+    <string name="security_set_pin_title">Set a 6-digit PIN</string>
+    <string name="security_set_pin_confirm">Confirm</string>
+    <string name="security_confirm_disable_title">Enter your PIN to turn this off</string>
 </resources>
