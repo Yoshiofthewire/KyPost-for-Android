@@ -1488,7 +1488,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.urlxl.mail.R
 import com.urlxl.mail.applyThemeToActivity
-import com.urlxl.mail.data.DataRuntime
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 
